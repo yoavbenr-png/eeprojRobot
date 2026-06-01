@@ -164,10 +164,12 @@ class Controller:
                 self._loop_counter += 1
 
                 if self._state == self.IDLE:
-                    if not self._fetch_live_target():
-                        self._stop()
-                        time.sleep(LOOP_DT)
-                        continue
+
+                    if self._loop_counter % 10 == 0:
+                        if not self._fetch_live_target():
+                            self._stop()
+                            time.sleep(LOOP_DT)
+                            continue
                     
                     print(f"[FSM] IDLE → NAVIGATE_EXTERNAL")
                     print(f"[FSM] Initial relative target: ({self._target_dx:.3f}, {self._target_dy:.3f})")
