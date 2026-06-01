@@ -25,7 +25,6 @@ class Controller:
     HOLDING           = 'HOLDING'
     NAVIGATE_DISPOSAL = 'NAVIGATE_DISPOSAL'
     DISPOSE           = 'DISPOSE'
-    WALK_HOME         = 'WALK_HOME'
 
     def __init__(self, shared_mem: SharedMemory):
         self.memory = shared_mem
@@ -177,12 +176,13 @@ class Controller:
 
                 elif self._state == self.NAVIGATE_EXTERNAL:
                     # SAFETY CHECK: Stop instantly if valid=0
-                    if not self._fetch_live_target():
-                        self._stop()
-                        if self._loop_counter % 20 == 0:
-                            print("[FSM] Target lost (valid=0). Halting movement...")
-                        time.sleep(LOOP_DT)
-                        continue
+                    if self._loop_counter % 10 == 0:
+                        if not self._fetch_live_target():
+                            self._stop()
+                            if self._loop_counter % 20 == 0:
+                                print("[FSM] Target lost (valid=0). Halting movement...")
+                            time.sleep(LOOP_DT)
+                            continue
 
                     distance = math.hypot(self._target_dx, self._target_dy)
 
@@ -277,8 +277,8 @@ class Controller:
                         self._state = self.HOLDING
                     else:
                         print(f"[FSM] GRASP failed (object not found in scan)")
-                        print(f"[FSM] GRASP → WALK_HOME")
-                        self._state = self.WALK_HOME
+                        print(f"[FSM] GRASP → IDLE")
+                        self._state = self.IDLE
 
                     self.memory.clear_target()
                     time.sleep(LOOP_DT)
@@ -296,11 +296,12 @@ class Controller:
                     self._state = self.NAVIGATE_DISPOSAL
 
                 elif self._state == self.NAVIGATE_DISPOSAL:
-                    if not self._fetch_live_target():
-                        self._stop()
-                        print("[FSM] Disposal target lost (valid=0). Halting movement...")
-                        time.sleep(LOOP_DT)
-                        continue
+                    if self._loop_counter % 10 == 0:
+                        if not self._fetch_live_disposal():
+                            self._stop()
+                            print("[FSM] Disposal target lost (valid=0). Halting movement...")
+                            time.sleep(LOOP_DT)
+                            continue
 
                     arrived = self._walk_step(self._target_dx, self._target_dy, GRASP_THRESHOLD)
                     if arrived:
@@ -318,28 +319,9 @@ class Controller:
                     self.dog.arm(ARM_HOME_X, ARM_HOME_Z)
                     time.sleep(1.0)
                     self.memory.clear_target()  
-                    self._state = self.WALK_HOME
+                    self._state = self.IDLE
                     time.sleep(LOOP_DT)
                     continue
-
-                elif self._state == self.WALK_HOME:
-                    if not self._fetch_live_target():
-                        self._stop()
-                        if self._loop_counter % 50 == 0:  
-                            print(f"[FSM] Waiting for valid relative HOME location from API...")
-                        time.sleep(LOOP_DT)
-                        continue
-
-                    arrived = self._walk_step(self._target_dx, self._target_dy, GRASP_THRESHOLD)
-                    if arrived:
-                        self._stop()
-                        print(f"[FSM] Returned to home base.")
-                        self.memory.clear_target()
-                        self._state = self.IDLE
-                    else:
-                        self._log_pos()
-                        time.sleep(max(0.0, LOOP_DT - (time.time() - loop_start)))
-                        continue
 
                 time.sleep(max(0.0, LOOP_DT - (time.time() - loop_start)))
 

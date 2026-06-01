@@ -99,7 +99,7 @@ OBJ_MIN_AREA = 100
 # ── Vision — Phase 1: SCAN ────────────────────────────────────────────
 CAMERA_HFOV_DEG         = 62.2 
 VISUAL_SCAN_STEP_DEG    =  4   
-VISUAL_SCAN_MAX_DEG     = 96   
+VISUAL_SCAN_MAX_DEG     = 24   
 VISUAL_SCAN_LOOK_FRAMES =  14  
 VISUAL_SCAN_FRAME_SLEEP = 0.10 
 VISUAL_SCAN_PASSES      =  2   
