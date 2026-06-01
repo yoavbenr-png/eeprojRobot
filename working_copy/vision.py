@@ -8,7 +8,21 @@ from typing import Optional
 import cv2
 import numpy as np
 
-from config import *
+from config import (
+    CAMERA_INDEX, CAMERA_WIDTH, CAMERA_HEIGHT,
+    CAMERA_HFOV_DEG,
+    OBJ_HSV_LOWER, OBJ_HSV_UPPER, OBJ_MIN_AREA,
+    VISUAL_SCAN_STEP_DEG, VISUAL_SCAN_MAX_DEG,
+    VISUAL_SCAN_LOOK_FRAMES, VISUAL_SCAN_FRAME_SLEEP,
+    VISUAL_SCAN_PASSES, VISUAL_REACQUIRE_ANGLE_DEG, VISUAL_REACQUIRE_TRIES,
+    VISUAL_BACKUP_STEPS, VISUAL_BACKUP_SPEED, VISUAL_BACKUP_TIME,
+    VISUAL_MIN_GRASP_AREA, VISUAL_SIZE_APPROACH_STEPS, VISUAL_SIZE_STEP_SPEED,
+    VISUAL_SIZE_STEP_TIME, VISUAL_SIZE_MAX_APPROACHES,
+    VISUAL_H_TOLERANCE, VISUAL_CY_TARGET_FRAC, VISUAL_CY_TOLERANCE,
+    VISUAL_SERVO_TURN_ONLY_H, VISUAL_TURN_SPEED_MAX, VISUAL_APPROACH_SPEED,
+    VISUAL_SERVO_ITER, VISUAL_SERVO_DT,
+    QUICK_DETECT_FRAMES, QUICK_DETECT_SLEEP,
+)
 
 
 class VisionController:
@@ -30,15 +44,13 @@ class VisionController:
         except Exception:
             return 0.0
 
-    def _turn_to_yaw(self, target: float , offset=0):
+    def _turn_to_yaw(self, target: float):
         for _ in range(60):
             err = (target - self._raw_yaw() + 180.0) % 360.0 - 180.0
             if abs(err) < 3.0:
                 break
             speed = int(np.clip(err * 0.8, -18.0, 18.0))
             self.dog.turn(speed)
-            if(offset == 10 or offset == -10):
-                self.dog.move_x(-4)
             time.sleep(0.10)
         self._stop()
         time.sleep(0.15)
@@ -53,31 +65,16 @@ class VisionController:
 
     def _detect(self, frame) -> Optional[tuple]:
         h     = frame.shape[0]
-        
-        # ── FIX: AGGRESSIVE HORIZON CROP ──
-        # Ignore the top 60% of the camera frame (walls/background)
-        # Only look at the bottom 40% (the floor)
-        crop_line = int(h * 0.60)
-        roi   = frame[crop_line:, :]
-        y_off = crop_line
-        # ──────────────────────────────────
+        roi   = frame[h // 4:, :]
+        y_off = h // 4
 
         hsv  = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-        
-        # Initialize an entirely black mask of the same dimensions
-        combined_mask = np.zeros(hsv.shape[:2], dtype=np.uint8)
+        mask = cv2.inRange(hsv,
+                           np.array(OBJ_HSV_LOWER),
+                           np.array(OBJ_HSV_UPPER))
 
-        # Loop through our target colors and combine them into one master mask
-        for color in TARGET_COLORS:
-            lower = np.array(color["lower"])
-            upper = np.array(color["upper"])
-            mask = cv2.inRange(hsv, lower, upper)
-            # Add this color's mask to the combined mask
-            combined_mask = cv2.bitwise_or(combined_mask, mask)
-
-        # Apply morphology to clean up noise on the combined mask
         kernel = np.ones((5, 5), np.uint8)
-        mask   = cv2.morphologyEx(combined_mask, cv2.MORPH_OPEN,  kernel)
+        mask   = cv2.morphologyEx(mask, cv2.MORPH_OPEN,  kernel)
         mask   = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
         contours, _ = cv2.findContours(mask,
@@ -192,10 +189,6 @@ class VisionController:
             print(f"[Vision] Sweep {label}  "
                   f"step {i}/{steps}  angle={direction * angle:+d}°")
             self._turn_to_yaw(dest_yaw)
-            self.dog.move_x(-1)
-            time.sleep(0.1)
-            self.dog.move_x(0)
-
 
             det = self._look(cap)
             if det is not None:
@@ -254,7 +247,7 @@ class VisionController:
 
         for offset in offsets:
             print(f"[Vision] Reacquire: checking offset {offset:+.0f}°")
-            self._turn_to_yaw(base_yaw + offset, offset)
+            self._turn_to_yaw(base_yaw + offset)
             if self._look(cap) is not None:
                 print(f"[Vision] Reacquired object at offset {offset:+.0f}° ✓")
                 return True
@@ -289,17 +282,7 @@ class VisionController:
 
     def _servo(self, cap) -> bool:
         cy_target = VISUAL_CY_TARGET_FRAC * CAMERA_HEIGHT
-        # Grasp band based on cy_frac = cy / CAMERA_HEIGHT.
-        # Ready for grasp when 0.88 <= cy_frac <= 0.94.
-        cy_min = VISUAL_CY_GRASP_MIN_FRAC
-        cy_max = VISUAL_CY_GRASP_MAX_FRAC
-        
-        # ── FIX: PARALLAX OFFSET ──
-        # If it grabs to the right, use a POSITIVE number to shift the body left (e.g., 15)
-        # If it grabs to the left, use a NEGATIVE number to shift the body right (e.g., -15)
-        parallax_offset = 15
-        frame_cx  = (CAMERA_WIDTH / 2.0) + parallax_offset
-        # ──────────────────────────
+        frame_cx  = CAMERA_WIDTH / 2.0
 
         for step in range(VISUAL_SERVO_ITER):
             det = self._grab_fresh(cap)
@@ -322,27 +305,17 @@ class VisionController:
             self._last_detection = det
             cx, cy, area = det
             h_err  = (frame_cx - cx)  / frame_cx
-            cy_frac = cy / CAMERA_HEIGHT
             cy_err = (cy - cy_target) / CAMERA_HEIGHT
             
             h_aligned = abs(h_err) <= VISUAL_H_TOLERANCE
-            in_grasp_band = cy_min <= cy_frac <= cy_max
+            dist_aligned = (cy_err >= -VISUAL_CY_TOLERANCE)
 
-            converged = h_aligned and in_grasp_band
+            converged = h_aligned and dist_aligned
 
             if converged:
                 self._stop()
                 print(f"[Vision] Servo {step:02d}  cx={cx}  cy={cy:.0f}  "
-                      f"cy_frac={cy_frac:.3f} range=[{cy_min:.2f}, {cy_max:.2f}]  "
-                      f"h_err={h_err:+.3f}  ✓ CONVERGED")
-                return True
-
-            if h_aligned and cy_frac > cy_max:
-                # Already past the desired band. Avoid pushing the target away.
-                self._stop()
-                print(f"[Vision] Servo {step:02d}  cx={cx}  cy={cy:.0f}  "
-                      f"cy_frac={cy_frac:.3f} > {cy_max:.2f}  "
-                      f"h_err={h_err:+.3f}  ✓ CLOSE ENOUGH / GRASP")
+                      f"h_err={h_err:+.3f}  cy_err={cy_err:+.3f}  ✓ CONVERGED")
                 return True
 
             if abs(h_err) > VISUAL_SERVO_TURN_ONLY_H:
@@ -363,11 +336,10 @@ class VisionController:
                 if 0 < turn_cmd < min_turn: turn_cmd = min_turn
                 elif 0 > turn_cmd > -min_turn: turn_cmd = -min_turn
 
-            # Move forward only while the object is still above the grasp band.
-            # Once cy_frac reaches 0.88, the next loop will initiate grasp.
-            fwd_cmd = VISUAL_APPROACH_SPEED if cy_frac < cy_min else 0
+            fwd_cmd = (int(-np.sign(cy_err) * VISUAL_APPROACH_SPEED) if abs(cy_err) > VISUAL_CY_TOLERANCE else 0)
+            fwd_cmd = max(0, fwd_cmd) # Prevent moving backward
 
-            print(f"[Vision] Servo {step:02d} [COMBINED] cx={cx} cy={cy:.0f} cy_frac={cy_frac:.3f} h_err={h_err:+.3f} cy_err={cy_err:+.3f} turn={turn_cmd:+d} fwd={fwd_cmd:+d}")
+            print(f"[Vision] Servo {step:02d} [COMBINED] cx={cx} cy={cy:.0f} h_err={h_err:+.3f} cy_err={cy_err:+.3f} turn={turn_cmd:+d} fwd={fwd_cmd:+d}")
             self.dog.move_x(fwd_cmd)
             self.dog.turn(turn_cmd)
             time.sleep(VISUAL_SERVO_DT)

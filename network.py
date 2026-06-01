@@ -1,238 +1,163 @@
 """
-network.py — thread-safe shared memory, UDP listener, and message sender.
-Supports UDP, file-based, and REST API coordinate reading.
+network.py — thread-safe shared memory, REST API polling, UDP tracking, and message sender.
 """
 
 import json
-import os
 import socket
 import threading
 import time
 import urllib.request
 import urllib.error
+import os
 from typing import Optional
 
 from config import (
-    LISTEN_PORT, COMPUTER_IP, COMPUTER_PORT,
-    COORD_SOURCE, COORD_FILE_PATH, COORD_POLL_INTERVAL,
-    REST_API_URL, REST_API_TIMEOUT, REST_API_KEY,
+    COORD_SOURCE, COORD_FILE_PATH, COORD_POLL_INTERVAL, LISTEN_PORT,
+    REST_API_GARBAGE, REST_API_BASKET, REST_API_TIMEOUT, REST_API_KEY,
+    COMPUTER_IP, COMPUTER_PORT, FIXED_BASKET_X, FIXED_BASKET_Y
 )
 
-
 class SharedMemory:
-    """Thread-safe storage for current navigation target and disposal location."""
-
     def __init__(self):
-        self._lock   = threading.Lock()
-        self._target: Optional[dict] = None
-        self._disposal: Optional[dict] = None
+        self._lock = threading.Lock()
+        self._target = None; self._disposal = None; self._robot_position = None
+        self._target_lock_flag = 0
 
     def update_target(self, target: dict):
-        """Update the trash target coordinates."""
-        with self._lock:
-            self._target = target
-
+        with self._lock: self._target = target
     def get_target(self) -> Optional[dict]:
-        """Get current trash target coordinates."""
-        with self._lock:
-            return self._target
-
+        with self._lock: return self._target
     def clear_target(self):
-        """Clear the trash target (after pickup)."""
-        with self._lock:
-            self._target = None
+        with self._lock: self._target = None
+
+    def set_target_lock_flag(self, value: int):
+        with self._lock: self._target_lock_flag = 1 if value else 0
+    def get_target_lock_flag(self) -> int:
+        with self._lock: return self._target_lock_flag
 
     def update_disposal(self, disposal: dict):
-        """Update the disposal location coordinates."""
-        with self._lock:
-            self._disposal = disposal
-
+        with self._lock: self._disposal = disposal
     def get_disposal(self) -> Optional[dict]:
-        """Get disposal location coordinates."""
-        with self._lock:
-            return self._disposal
-
+        with self._lock: return self._disposal
     def clear_disposal(self):
-        """Clear disposal location (after disposal complete)."""
-        with self._lock:
-            self._disposal = None
+        with self._lock: self._disposal = None
 
+    def update_robot_position(self, pos: dict):
+        with self._lock: self._robot_position = pos
+    def get_and_clear_robot_position(self) -> Optional[dict]:
+        with self._lock:
+            pos = self._robot_position
+            self._robot_position = None
+            return pos
 
 class MessageSender:
     """Handles sending status messages back to the computer."""
-
     @staticmethod
     def send_status(status: str, position: dict, message: str = ""):
-        """
-        Send a status message to the computer via UDP.
-        
-        Args:
-            status: Status code (e.g., 'trash_collected', 'disposal_complete')
-            position: Current robot position {'x': float, 'y': float}
-            message: Human-readable message
-        """
         try:
-            payload = {
-                "status": status,
-                "position": position,
-                "message": message,
-                "timestamp": time.time()
-            }
-            
+            payload = {"status": status, "position": position, "message": message, "timestamp": time.time()}
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.sendto(
-                json.dumps(payload).encode('utf-8'),
-                (COMPUTER_IP, COMPUTER_PORT)
-            )
+            sock.sendto(json.dumps(payload).encode('utf-8'), (COMPUTER_IP, COMPUTER_PORT))
             sock.close()
-            
             print(f"[Net] Sent to computer: {payload}")
-            
         except Exception as e:
             print(f"[Net] Failed to send message: {e}")
 
-
 class NetworkLayer(threading.Thread):
-    """
-    Daemon thread that receives target coordinates via UDP or file polling.
-    
-    Packet format:
-        {"x": <float>, "y": <float>, "z": <float (optional)>, "type": "trash" or "disposal"}
-    
-    Type field:
-        - "trash" (or omitted): trash target coordinates
-        - "disposal": disposal location coordinates
-    """
-
-    def __init__(self, shared_memory: SharedMemory):
+    def __init__(self, shared_memory: SharedMemory, state_callback):
         super().__init__(daemon=True)
         self.memory = shared_memory
+        self.state_callback = state_callback
         
-        if COORD_SOURCE == 'udp':
-            self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self._sock.bind(('0.0.0.0', LISTEN_PORT))
-            self._sock.settimeout(1.0)  # Allow periodic checks
-        else:
-            self._sock = None
-
-    def _handle_packet(self, cmd: dict, source: str = "unknown"):
-        """Process incoming coordinate packet."""
-        if 'x' not in cmd or 'y' not in cmd:
-            print(f"[Net] Ignored packet from {source} (missing x/y): {cmd}")
-            return
-
-        cmd.setdefault('z', 0.0)
-        
-        # Simple format: just coordinates
-        # Robot determines meaning based on its current state
-        # - If IDLE/NAVIGATING → trash target
-        # - If HOLDING → disposal location
-        
-        self.memory.update_target(cmd)
-        print(f"[Net] New coordinates from {source}: "
-              f"({cmd['x']:.3f}, {cmd['y']:.3f}, {cmd['z']:.3f})")
-
-    def _udp_mode(self):
-        """Run UDP listener mode."""
-        print(f"[Net] Listening on UDP port {LISTEN_PORT}")
+    def _udp_listener(self):
+        """Listens for live position tracking from streaming_sender.py"""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind(('0.0.0.0', LISTEN_PORT))
+        print(f"[Net] UDP Listener started on port {LISTEN_PORT}")
         while True:
             try:
-                data, addr = self._sock.recvfrom(4096)
+                data, _ = sock.recvfrom(2048)
                 cmd = json.loads(data.decode('utf-8'))
-                self._handle_packet(cmd, source=str(addr))
+                
+                # Update live position from external tracking
+                if cmd.get("type") == "position":
+                    self.memory.update_robot_position(cmd)
+            except Exception:
+                pass
 
-            except socket.timeout:
-                continue  # Normal timeout, keep listening
-            except json.JSONDecodeError as e:
-                print(f"[Net] JSON decode error: {e}")
-            except Exception as e:
-                print(f"[Net] Error: {e}")
-
-    def _file_mode(self):
-        """Run file polling mode."""
-        print(f"[Net] Polling coordinate file: {COORD_FILE_PATH}")
-        last_mtime = 0
-
+    def _polling_loop(self):
+        """Polls coordinates depending on the FSM State and COORD_SOURCE"""
+        last_garbage = None; last_basket = None
+        
         while True:
-            try:
-                if os.path.exists(COORD_FILE_PATH):
-                    mtime = os.path.getmtime(COORD_FILE_PATH)
-                    
-                    # Only read if file was modified
-                    if mtime > last_mtime:
-                        with open(COORD_FILE_PATH, 'r') as f:
-                            cmd = json.load(f)
+            state = self.state_callback()
+            
+            if COORD_SOURCE == 'rest':
+                # --- REST API MODE ---
+                if state in ['IDLE', 'NAVIGATE_EXTERNAL']:
+                    try:
+                        req = urllib.request.Request(REST_API_GARBAGE)
+                        if REST_API_KEY: req.add_header('Authorization', f'Bearer {REST_API_KEY}')
+                        with urllib.request.urlopen(req, timeout=REST_API_TIMEOUT) as resp:
+                            cmd = json.loads(resp.read().decode('utf-8'))
                         
-                        self._handle_packet(cmd, source="file")
-                        last_mtime = mtime
+                        # THE FIX: Check that x/y exist AND valid is exactly 1
+                        if 'x' in cmd and 'y' in cmd and cmd.get('valid') == 1:
+                            if cmd != last_garbage:
+                                self.memory.update_target(cmd)
+                                last_garbage = cmd
+                        else:
+                            # If valid is 0 or missing, erase the ghost target!
+                            self.memory.clear_target()
+                            
+                    except Exception: 
+                        self.memory.clear_target() # Clear on network fail
+                
+                if state in ['HOLDING', 'NAVIGATE_DISPOSAL', 'DISPOSE']:
+                    try:
+                        req = urllib.request.Request(REST_API_BASKET)
+                        if REST_API_KEY: req.add_header('Authorization', f'Bearer {REST_API_KEY}')
+                        with urllib.request.urlopen(req, timeout=REST_API_TIMEOUT) as resp:
+                            cmd = json.loads(resp.read().decode('utf-8'))
+                            
+                        # THE FIX: Check that x/y exist AND valid is exactly 1
+                        if 'x' in cmd and 'y' in cmd and cmd.get('valid') == 1:
+                            if cmd != last_basket or self.memory.get_disposal() is None:
+                                self.memory.update_disposal(cmd)
+                                last_basket = cmd
+                        else:
+                            self.memory.clear_disposal()
+                            
+                    except Exception: 
+                        pass # Don't clear disposal on timeout, just wait
 
-            except json.JSONDecodeError as e:
-                print(f"[Net] File JSON error: {e}")
-            except Exception as e:
-                print(f"[Net] File read error: {e}")
-
-            time.sleep(COORD_POLL_INTERVAL)
-
-    def _rest_mode(self):
-        """
-        Poll the REST API every COORD_POLL_INTERVAL seconds.
-        Expected JSON: {"x": 0.5, "y": 0.0, "z": 0.0}
-        Only forwards to SharedMemory when coordinates actually change.
-        On startup, does one silent poll to ignore stale coordinates
-        from a previous run.
-        """
-        print(f"[Net] REST mode — polling {REST_API_URL} every {COORD_POLL_INTERVAL}s")
-
-        # Startup: sample once silently so we don't act on stale coords
-        last_coords = None
-        print(f"[Net] Startup: sampling API to discard stale coordinates...")
-        try:
-            req = urllib.request.Request(REST_API_URL)
-            if REST_API_KEY:
-                req.add_header('Authorization', f'Bearer {REST_API_KEY}')
-            with urllib.request.urlopen(req, timeout=REST_API_TIMEOUT) as resp:
-                cmd = json.loads(resp.read().decode('utf-8'))
-            if 'x' in cmd and 'y' in cmd:
-                cmd.setdefault('z', 0.0)
-                last_coords = (cmd['x'], cmd['y'], cmd['z'])
-                print(f"[Net] Startup: ignoring existing {last_coords} — waiting for new coordinate")
-        except Exception as e:
-            print(f"[Net] Startup poll failed ({e}) — will act on first response received")
-
-        while True:
-            try:
-                req = urllib.request.Request(REST_API_URL)
-                if REST_API_KEY:
-                    req.add_header('Authorization', f'Bearer {REST_API_KEY}')
-
-                with urllib.request.urlopen(req, timeout=REST_API_TIMEOUT) as resp:
-                    cmd = json.loads(resp.read().decode('utf-8'))
-
-                if 'x' not in cmd or 'y' not in cmd:
-                    print(f"[Net] REST response missing x/y: {cmd}")
-                else:
-                    cmd.setdefault('z', 0.0)
-                    current = (cmd['x'], cmd['y'], cmd['z'])
-                    if current != last_coords:
-                        self._handle_packet(cmd, source="REST API")
-                        last_coords = current
-                    else:
-                        print(f"[Net] REST: no change ({cmd['x']:.3f}, {cmd['y']:.3f}) — skipping")
-
-            except urllib.error.URLError as e:
-                print(f"[Net] REST request failed: {e.reason}")
-            except json.JSONDecodeError as e:
-                print(f"[Net] REST JSON error: {e}")
-            except Exception as e:
-                print(f"[Net] REST unexpected error: {e}")
+            elif COORD_SOURCE == 'file':
+                # --- LOCAL FILE MODE ---
+                if state in ['IDLE', 'NAVIGATE_EXTERNAL']:
+                    try:
+                        if os.path.exists(COORD_FILE_PATH):
+                            with open(COORD_FILE_PATH, 'r') as f:
+                                cmd = json.load(f)
+                                
+                            # THE FIX: File check for valid=1
+                            if 'x' in cmd and 'y' in cmd and cmd.get('valid') == 1:
+                                if cmd != last_garbage:
+                                    self.memory.update_target(cmd)
+                                    last_garbage = cmd
+                            else:
+                                self.memory.clear_target()
+                    except Exception as e: 
+                        self.memory.clear_target()
+                
+                if state in ['HOLDING', 'NAVIGATE_DISPOSAL', 'DISPOSE']:
+                    fixed_cmd = {'x': FIXED_BASKET_X, 'y': FIXED_BASKET_Y, 'z': 0.0}
+                    if self.memory.get_disposal() is None:
+                        self.memory.update_disposal(fixed_cmd)
 
             time.sleep(COORD_POLL_INTERVAL)
 
     def run(self):
-        """Main thread loop — selects mode from COORD_SOURCE in config.py."""
-        if COORD_SOURCE == 'udp':
-            self._udp_mode()
-        elif COORD_SOURCE == 'rest':
-            self._rest_mode()
-        else:
-            self._file_mode()
+        # Start coordinate polling in the background
+        threading.Thread(target=self._polling_loop, daemon=True).start()
+        # Run UDP live-tracking listener in this thread
+        self._udp_listener()
