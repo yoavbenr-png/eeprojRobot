@@ -3,10 +3,12 @@ control.py — main entry point for the XGO-Mini trash collection task.
 (Watchdog satisfied: Continuous 10Hz pinging with explicit turnleft/turnright routing)
 """
 
+import json
 import math
 import time
 import numpy as np
 from xgolib import XGO
+import urllib
 
 from config import *
 from network import SharedMemory, NetworkLayer
@@ -164,11 +166,27 @@ class Controller:
 
                 if self._state == self.IDLE:
 
-                    if self._loop_counter % 10 == 0:
-                        if not self._fetch_live_target():
+
+                    cmd = None
+                    try:
+                        time.sleep(LOOP_DT * 10)
+                        req = urllib.request.Request(REST_API_GARBAGE)
+                        with urllib.request.urlopen(req, timeout=REST_API_TIMEOUT) as resp:
+                            cmd = json.loads(resp.read().decode('utf-8'))
+                        
+                        # THE FIX: Check that x/y exist AND valid is exactly 1
+                        if 'x' in cmd and 'y' in cmd and cmd.get('valid') == 1:
+                            self._target_dx = cmd['x']
+                            self._target_dy = cmd['y']
+                        else:
                             self._stop()
-                            time.sleep(LOOP_DT)
-                            continue
+                            print("[FSM] No valid target (valid=0) — staying IDLE")
+                        
+                            
+                    except Exception: 
+                        print("Can't connect to server.")
+                        exit(1)
+
                     
                     print(f"[FSM] IDLE → NAVIGATE_EXTERNAL")
                     print(f"[FSM] Initial relative target: ({self._target_dx:.3f}, {self._target_dy:.3f})")
@@ -285,11 +303,27 @@ class Controller:
                     continue
 
                 elif self._state == self.HOLDING:
-                    if not self._fetch_live_disposal():
-                        self._stop()
-                        print(f"[FSM] Holding trash, waiting for valid relative disposal location...")
-                        time.sleep(LOOP_DT)
-                        continue
+
+                    cmd = None
+                    try:
+                        time.sleep(LOOP_DT * 10)
+                        req = urllib.request.Request(REST_API_BASKET)
+                        with urllib.request.urlopen(req, timeout=REST_API_TIMEOUT) as resp:
+                            cmd = json.loads(resp.read().decode('utf-8'))
+                        
+                        # THE FIX: Check that x/y exist AND valid is exactly 1
+                        if 'x' in cmd and 'y' in cmd and cmd.get('valid') == 1:
+                            self._target_dx = cmd['x']
+                            self._target_dy = cmd['y']
+                        else:
+                            self._stop()
+                            print("[FSM] Holding trash, waiting for valid relative disposal location...")
+                        
+                            
+                    except Exception: 
+                        print("Can't connect to server.")
+                        exit(1)
+                    
                     
                     print(f"[FSM] Disposal location received: ({self._target_dx:.3f}, {self._target_dy:.3f})")
                     print(f"[FSM] HOLDING → NAVIGATE_DISPOSAL")
