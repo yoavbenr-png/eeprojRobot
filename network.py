@@ -14,7 +14,7 @@ from typing import Optional
 from config import (
     COORD_SOURCE, COORD_FILE_PATH, COORD_POLL_INTERVAL, LISTEN_PORT,
     REST_API_GARBAGE, REST_API_BASKET, REST_API_TIMEOUT, REST_API_KEY,
-    COMPUTER_IP, COMPUTER_PORT, FIXED_BASKET_X, FIXED_BASKET_Y
+    COMPUTER_IP, FIXED_BASKET_X, FIXED_BASKET_Y
 )
 
 class SharedMemory:
@@ -49,19 +49,6 @@ class SharedMemory:
             pos = self._robot_position
             self._robot_position = None
             return pos
-
-class MessageSender:
-    """Handles sending status messages back to the computer."""
-    @staticmethod
-    def send_status(status: str, position: dict, message: str = ""):
-        try:
-            payload = {"status": status, "position": position, "message": message, "timestamp": time.time()}
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.sendto(json.dumps(payload).encode('utf-8'), (COMPUTER_IP, COMPUTER_PORT))
-            sock.close()
-            print(f"[Net] Sent to computer: {payload}")
-        except Exception as e:
-            print(f"[Net] Failed to send message: {e}")
 
 class NetworkLayer(threading.Thread):
     def __init__(self, shared_memory: SharedMemory, state_callback):

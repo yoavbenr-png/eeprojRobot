@@ -4,8 +4,7 @@ config.py — all tunable constants for the XGO-Mini pick-up task.
 
 # ── Network ───────────────────────────────────────────────────────────
 LISTEN_PORT = 4999          
-COMPUTER_IP = '10.182.211.26' 
-COMPUTER_PORT = 5000         
+COMPUTER_IP = '10.182.211.26'        
 
 COORD_SOURCE = 'rest'        
 COORD_FILE_PATH = '/tmp/trash_coords.json'

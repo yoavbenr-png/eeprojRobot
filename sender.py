@@ -33,7 +33,6 @@ import time
 # Robot and computer network configuration
 ROBOT_IP = '172.20.10.3'     # IP of the XGO Mini robot
 ROBOT_PORT = 5000             # Port robot listens on for coordinates
-COMPUTER_PORT = 5001          # Port computer listens on for status messages
 
 
 class RobotCommunicator:
@@ -84,56 +83,7 @@ class RobotCommunicator:
         except Exception as e:
             print(f"[Error] Failed to send coordinates: {e}")
             return False
-    
-    def start_status_listener(self):
-        """Start background thread to listen for robot status messages."""
-        if self.status_listener is not None:
-            print("[Warning] Status listener already running")
-            return
-        
-        self.status_listener = threading.Thread(
-            target=self._listen_for_status,
-            daemon=True
-        )
-        self.status_listener.start()
-        print(f"[Listening] for robot status on port {COMPUTER_PORT}")
-    
-    def _listen_for_status(self):
-        """Background thread that listens for robot status messages."""
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind(('0.0.0.0', COMPUTER_PORT))
-        sock.settimeout(1.0)
-        
-        print(f"[Status Listener] Started on port {COMPUTER_PORT}")
-        
-        while True:
-            try:
-                data, addr = sock.recvfrom(4096)
-                msg = json.loads(data.decode('utf-8'))
-                
-                status = msg.get('status', 'unknown')
-                position = msg.get('position', {})
-                message = msg.get('message', '')
-                
-                print(f"\n{'='*60}")
-                print(f"[Robot Status] {status}")
-                print(f"[Position] x={position.get('x', 0):.3f}, y={position.get('y', 0):.3f}")
-                print(f"[Message] {message}")
-                print(f"{'='*60}\n")
-                
-                # Auto-respond with disposal location when trash collected
-                if status == 'trash_collected':
-                    print("[Auto-Response] Trash collected! Sending disposal location...")
-                    time.sleep(1.0)  # Brief delay
-                    # Send robot to origin as disposal location (example)
-                    self.send_disposal_coords(0.0, 0.0, 0.0)
-                
-            except socket.timeout:
-                continue
-            except json.JSONDecodeError as e:
-                print(f"[Status Listener] JSON error: {e}")
-            except Exception as e:
-                print(f"[Status Listener] Error: {e}")
+
     
     def simulate_streaming(self, duration: float = 60.0, update_interval: float = 2.0):
         """

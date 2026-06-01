@@ -9,7 +9,7 @@ import numpy as np
 from xgolib import XGO
 
 from config import *
-from network import SharedMemory, NetworkLayer, MessageSender
+from network import SharedMemory, NetworkLayer
 from grasp import GraspController
 
 
@@ -272,11 +272,6 @@ class Controller:
 
                     if success:
                         print(f"[FSM] GRASP → HOLDING")
-                        MessageSender.send_status(
-                            status="trash_collected",
-                            position={"message": "Using relative coordinates, absolute pos unknown"},
-                            message="Trash Collected, ready for Disposal location"
-                        )
                         self._state = self.HOLDING
                     else:
                         print(f"[FSM] GRASP failed (object not found in scan)")
@@ -320,12 +315,6 @@ class Controller:
                     time.sleep(1.0)
                     self.dog.arm(ARM_HOME_X, ARM_HOME_Z)
                     time.sleep(1.0)
-                    
-                    MessageSender.send_status(
-                        status="disposal_complete",
-                        position={"message": "Disposed successfully"},
-                        message="Trash disposed, returning to base"
-                    )
                     self.memory.clear_target()  
                     self._state = self.WALK_HOME
                     time.sleep(LOOP_DT)
