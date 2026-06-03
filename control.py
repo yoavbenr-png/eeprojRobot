@@ -362,6 +362,8 @@ class Controller:
 
                 elif self._state == self.DISPOSE:
                     print(f"[FSM] Disposing trash...")
+                    self._stop()
+                    time.sleep(1.0)
                     self.dog.claw(CLAW_OPEN)
                     time.sleep(1.0)
                     self.dog.arm(ARM_HOME_X , ARM_HOME_Z)
