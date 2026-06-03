@@ -184,6 +184,32 @@ class Controller:
             print("Can't connect to server.")
             exit(1)
 
+    def send_battery_status(self):
+        # 1. Format the data into a JSON string and encode it to bytes
+        battery_percentage = self.dog.read_battery()
+        payload = json.dumps({"battery": battery_percentage}).encode('utf-8')
+        
+        # 2. Build the POST request
+        req = urllib.request.Request(REST_API_BATTERY, data=payload, method='POST')
+        req.add_header('Content-Type', 'application/json')
+        
+        # If your API requires the Bearer token (like the trash/basket APIs do), uncomment this:
+        # req.add_header('Authorization', f'Bearer YOUR_API_KEY')
+
+        # 3. Prints for success or fail
+        try:
+            with urllib.request.urlopen(req, timeout=2.0) as response:
+        #         if response.status in (200, 201):
+        #             print(f"[Net] Battery updated successfully: {battery_percentage}%")
+        #         else:
+        #             print(f"[Net] API accepted request but returned status: {response.status}")
+                pass  
+        # except urllib.error.URLError as e:
+        #     print(f"[Net] Connection failed while sending battery: {e.reason}")
+        except Exception as e:
+        #     print(f"[Net] Unexpected error sending battery: {e}")
+            pass
+
     def run(self):
         print("[System] Standing up...")
         self.dog.action(2)

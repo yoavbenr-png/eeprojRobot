@@ -16,7 +16,8 @@ FIXED_BASKET_Y = 0.33
 
 # ── REST API ──────────────────────────────────────────────────────────
 REST_API_GARBAGE     = 'http://10.182.211.26:4999/api/garbage' 
-REST_API_BASKET     = 'http://10.182.211.26:4999/api/basket'  
+REST_API_BASKET     = 'http://10.182.211.26:4999/api/basket'
+REST_API_BATTERY    = 'http://10.182.211.26:4999/api/set_battery'  
 REST_API_TIMEOUT = 10.0  
 REST_API_KEY     = ''    
 
