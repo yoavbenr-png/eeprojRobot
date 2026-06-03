@@ -78,7 +78,6 @@ class VisionController:
         # Apply morphology to clean up noise on the combined mask
         kernel = np.ones((5, 5), np.uint8)
         mask   = cv2.morphologyEx(combined_mask, cv2.MORPH_OPEN,  kernel)
-        mask   = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
         contours, _ = cv2.findContours(mask,
                                        cv2.RETR_EXTERNAL,
@@ -99,13 +98,15 @@ class VisionController:
         cy = int(M['m01'] / M['m00']) + y_off
         return cx, cy, area
 
-    def _grab(self, cap) -> Optional[tuple]:
+    def _analyze_existing_frame(self, cap) -> Optional[tuple]:
+        # Takes an exiting image from the camera buffer, then analyze it with _detect()
         ret, frame = cap.read()
         if not ret:
             return None
         return self._detect(frame)
 
-    def _grab_fresh(self, cap) -> Optional[tuple]:
+    def _analyze_new_frame(self, cap) -> Optional[tuple]:
+        # Takes a new image from the camera, then analyze it with _detect()
         for _ in range(4):      
             cap.grab()
         ret, frame = cap.retrieve()
@@ -116,7 +117,7 @@ class VisionController:
     def _look(self, cap) -> Optional[tuple]:
         detections = []
         for _ in range(VISUAL_SCAN_LOOK_FRAMES):
-            det = self._grab_fresh(cap)
+            det = self._analyze_new_frame(cap)
             if det is not None:
                 detections.append(det)
             time.sleep(VISUAL_SCAN_FRAME_SLEEP)
@@ -131,39 +132,34 @@ class VisionController:
     # ------------------------------------------------------------------ quick detection
 
     def quick_detect(self) -> bool:
-        cap = cv2.VideoCapture(CAMERA_INDEX)
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH,  CAMERA_WIDTH)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
-
-        if not cap.isOpened():
-            return False
-
-        self._warmup(cap, duration=1.0)
-
+        self.open_nav_camera()
         detected = False
         try:
             for _ in range(QUICK_DETECT_FRAMES):
-                det = self._grab(cap)
+                det = self._analyze_existing_frame(self._nav_cap)
                 if det is not None:
                     detected = True
                     break
                 time.sleep(QUICK_DETECT_SLEEP)
-        finally:
-            cap.release()
+        except Exception as e:
+            print(f"[Vision] Error occurred: {e}")
 
         return detected
 
     def open_nav_camera(self):
-        if self._nav_cap is not None:
-            return
-        self._nav_cap = cv2.VideoCapture(CAMERA_INDEX)
+        # Opens the navigation camera, then returns if successful.
+        if self._nav_cap is None:
+            self._nav_cap = cv2.VideoCapture(CAMERA_INDEX)
+        elif self._nav_cap.isOpened():
+            return False
+        
         self._nav_cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self._nav_cap.set(cv2.CAP_PROP_FRAME_WIDTH,  CAMERA_WIDTH)
         self._nav_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
         
-        self._warmup(self._nav_cap, duration=1.5)
+        self._warmup(self._nav_cap, duration=1.0)
         print("[Vision] Nav camera ready")
+        return True
 
     def close_nav_camera(self):
         if self._nav_cap is not None:
@@ -173,7 +169,7 @@ class VisionController:
     def quick_detect_with_position(self) -> Optional[tuple]:
         if self._nav_cap is None or not self._nav_cap.isOpened():
             return None
-        det = self._grab_fresh(self._nav_cap)
+        det = self._analyze_new_frame(self._nav_cap)
         if det is None:
             return None
         self._last_detection = det
@@ -302,12 +298,12 @@ class VisionController:
         # ──────────────────────────
 
         for step in range(VISUAL_SERVO_ITER):
-            det = self._grab_fresh(cap)
+            det = self._analyze_new_frame(cap)
 
             if det is None:
                 self._stop()
                 time.sleep(0.15)
-                det = self._grab_fresh(cap)
+                det = self._analyze_new_frame(cap)
                 if det is None:
                     print("[Vision] Servo: object temporarily lost — trying local reacquire")
                     if self._reacquire_nearby(cap):
@@ -378,24 +374,20 @@ class VisionController:
     # ------------------------------------------------------------------ public
 
     def scan_and_align(self) -> bool:
-        cap = cv2.VideoCapture(CAMERA_INDEX)
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)         
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH,  CAMERA_WIDTH)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAMERA_HEIGHT)
 
-        if not cap.isOpened():
-            return False
+        self.open_nav_camera()    
+            
 
         print("[Vision] === scan_and_align start ===")
-        self._warmup(cap, duration=1.5)
+        
         found = False
 
         try:
             for size_attempt in range(VISUAL_SIZE_MAX_APPROACHES + 1):
-                if not self._scan(cap):
+                if not self._scan(self._nav_cap):
                     return False        
 
-                found = self._servo(cap)
+                found = self._servo(self._nav_cap)
                 if not found:
                     continue
 
@@ -408,7 +400,6 @@ class VisionController:
 
                 self._approach_two_steps_for_size()
         finally:
-            cap.release()
             self._stop()
 
         print("[Vision] === scan_and_align complete ===")

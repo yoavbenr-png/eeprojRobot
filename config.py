@@ -21,17 +21,16 @@ REST_API_TIMEOUT = 10.0
 REST_API_KEY     = ''    
 
 # ── Navigation ────────────────────────────────────────────────────────
-FORWARD_SPEED       = 15    
+FORWARD_SPEED       = 10   
 FORWARD_SPEED_MS    = 0.18  
 
-CAMERA_RANGE        = 0.36
-STOP_BEFORE_TARGET_M = 0.35
+CAMERA_RANGE        = 0.37
 # Stop this far before a locked trash target, then switch to camera mode.
 TARGET_LOCK_STOP_DISTANCE_M = 0.35
 GRASP_THRESHOLD     = 0.25  
 
 # FIXED: Dropped to 8cm so the 8.8cm arm drops the item perfectly in the center
-BASKET_THRESHOLD    = 0.25  
+BASKET_THRESHOLD    = 0.40  
 
 # FIXED: HYSTERESIS NAVIGATION
 # Allow 12 deg of wobble while walking. But if it stops to pivot, force 3 deg accuracy.
@@ -58,8 +57,8 @@ CAM_LOST_RETRIES      = 25
 ARM_REACH_X  =  88      
 ARM_Z_SCALE  = 800.0    
 ARM_Z_OFFSET = -200     
-ARM_HOME_X   =   0      
-ARM_HOME_Z   =   0      
+ARM_HOME_X   =   15      
+ARM_HOME_Z   =   15    
 CLAW_OPEN    =   0
 CLAW_CLOSED  = 255     
 

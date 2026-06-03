@@ -5,12 +5,7 @@ grasp.py — full pick-up sequence for the XGO-Mini.
 import time
 import numpy as np
 
-from config import (
-    ARM_REACH_X, ARM_Z_SCALE, ARM_Z_OFFSET, ARM_HOME_X, ARM_HOME_Z,
-    CLAW_OPEN, CLAW_CLOSED,
-    BODY_HEIGHT_NORMAL, BODY_HEIGHT_CROUCH, BODY_PITCH_GRASP,
-    FINAL_STEP_SPEED, FINAL_STEP_TIME
-)
+from config import *
 from vision import VisionController
 
 
@@ -62,9 +57,9 @@ class GraspController:
         self.dog.claw(CLAW_CLOSED)
         time.sleep(1.0)
 
-        print("[Grasp] 7/9  Retracting arm")
-        self.dog.arm(ARM_HOME_X, ARM_HOME_Z)
-        time.sleep(1.0)
+        #print("[Grasp] 7/9  Retracting arm")
+        #self.dog.arm(ARM_HOME_X, ARM_HOME_Z)
+        #time.sleep(1.0)
 
         print("[Grasp] 8/9  Levelling body")
         self.dog.attitude('p', 0)

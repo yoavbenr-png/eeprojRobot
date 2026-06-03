@@ -68,16 +68,12 @@ class Controller:
         time.sleep(0.01)
         self._steer(0)
 
-    def _walk_step(self, dx: float, dy: float, threshold: float) -> bool:
+    def _walk_step(self, dx: float, dy: float) -> bool:
         """
         Calculates distance and angle from relative coordinates.
         Turns if angle error is high, otherwise walks forward smoothly.
         """
-        distance = math.hypot(dx, dy)
-
-        if distance < threshold:
-            self._stop()
-            return True     
+        distance = math.hypot(dx, dy)    
 
         angle_to_target = math.degrees(math.atan2(dy, dx))
 
@@ -147,6 +143,47 @@ class Controller:
         self._target_dz = disposal.get('z', 0.0)
         return True
 
+
+    def _get_garbage_coords_from_server(self):
+        cmd = None
+        try:
+            req = urllib.request.Request(REST_API_GARBAGE)
+            with urllib.request.urlopen(req, timeout=REST_API_TIMEOUT) as resp:
+                cmd = json.loads(resp.read().decode('utf-8'))
+            
+            if 'x' in cmd and 'y' in cmd and cmd.get('valid') == 1:
+                self._target_dx = cmd['x']
+                self._target_dy = cmd['y']
+                pass
+            else:
+                self._stop()
+                print("[FSM] No valid target (valid=0) — staying IDLE")
+            return (cmd.get('valid') == 1)
+        except Exception: 
+            print("Can't connect to server.")
+            exit(1)
+            
+                
+
+    def _get_basket_coords_from_server(self):
+        cmd = None
+        try:
+            req = urllib.request.Request(REST_API_BASKET)
+            with urllib.request.urlopen(req, timeout=REST_API_TIMEOUT) as resp:
+                cmd = json.loads(resp.read().decode('utf-8'))
+            
+            if 'x' in cmd and 'y' in cmd and cmd.get('valid') == 1:
+                self._target_dx = cmd['x']
+                self._target_dy = cmd['y']
+                pass
+            else:
+                self._stop()
+                print("[FSM] No valid target (valid=0) — staying IDLE")
+            return (cmd.get('valid') == 1)
+        except Exception: 
+            print("Can't connect to server.")
+            exit(1)
+
     def run(self):
         print("[System] Standing up...")
         self.dog.action(2)
@@ -165,52 +202,24 @@ class Controller:
                 self._loop_counter += 1
 
                 if self._state == self.IDLE:
-
-
-                    cmd = None
-                    try:
-                        time.sleep(LOOP_DT * 10)
-                        req = urllib.request.Request(REST_API_GARBAGE)
-                        with urllib.request.urlopen(req, timeout=REST_API_TIMEOUT) as resp:
-                            cmd = json.loads(resp.read().decode('utf-8'))
-                        
-                        # THE FIX: Check that x/y exist AND valid is exactly 1
-                        if 'x' in cmd and 'y' in cmd and cmd.get('valid') == 1:
-                            self._target_dx = cmd['x']
-                            self._target_dy = cmd['y']
-                        else:
-                            self._stop()
-                            print("[FSM] No valid target (valid=0) — staying IDLE")
-                        
-                            
-                    except Exception: 
-                        print("Can't connect to server.")
-                        exit(1)
-
-                    
-                    print(f"[FSM] IDLE → NAVIGATE_EXTERNAL")
-                    print(f"[FSM] Initial relative target: ({self._target_dx:.3f}, {self._target_dy:.3f})")
-                    self._state = self.NAVIGATE_EXTERNAL
-
+                    time.sleep(LOOP_DT * 10)
+                    valid = self._get_garbage_coords_from_server()
+                    if valid:
+                        print(f"[FSM] IDLE → NAVIGATE_EXTERNAL")
+                        print(f"[FSM] Initial relative target: ({self._target_dx:.3f}, {self._target_dy:.3f})")
+                        self._state = self.NAVIGATE_EXTERNAL
                 elif self._state == self.NAVIGATE_EXTERNAL:
                     # SAFETY CHECK: Stop instantly if valid=0
-                    if self._loop_counter % 10 == 0:
-                        if not self._fetch_live_target():
-                            self._stop()
-                            if self._loop_counter % 20 == 0:
-                                print("[FSM] Target lost (valid=0). Halting movement...")
-                            time.sleep(LOOP_DT)
-                            continue
+                    if not self._get_garbage_coords_from_server():
+                        self._stop()
+                        if self._loop_counter % 20 == 0:
+                            print("[FSM] Target lost (valid=0). Halting movement...")
+                        continue
+                    time.sleep(LOOP_DT)
 
                     distance = math.hypot(self._target_dx, self._target_dy)
-
-                    if distance <= STOP_BEFORE_TARGET_M:
-                        print(f"[FSM] Stopping {distance:.3f}m from target → GRASP full scan")
-                        self._stop()
-                        self._state = self.GRASP
-                        continue
                     
-                    if distance < CAMERA_RANGE:
+                    if distance < CAMERA_RANGE and self._target_dx >= 0:
                         print(f"[FSM] Distance {distance:.3f}m — stopping to check camera")
                         self._stop()
                         self.dog.translation('z', BODY_HEIGHT_CROUCH)
@@ -219,16 +228,15 @@ class Controller:
                         time.sleep(0.8)
 
                         if self.grasp.vision.quick_detect():
-                            print(f"[FSM] Object visible — NAVIGATE_EXTERNAL → NAVIGATE_CAMERA")
-                            self.grasp.vision.open_nav_camera()
+                            print(f"[FSM] Object visible — NAVIGATE_EXTERNAL -> NAVIGATE_CAMERA")
                             self._state = self.NAVIGATE_CAMERA
                             continue
                         else:
-                            print("[FSM] Not visible in quick check — going to GRASP full scan")
+                            print("[FSM] Not visible in quick check - going to GRASP full scan")
                             self._state = self.GRASP
                             continue
                     
-                    arrived = self._walk_step(self._target_dx, self._target_dy, STOP_BEFORE_TARGET_M)
+                    arrived = self._walk_step(self._target_dx, self._target_dy)
                     
                     if arrived:
                         print(f"[FSM] Stopped before trash target via external navigation")
@@ -330,27 +338,33 @@ class Controller:
                     self._state = self.NAVIGATE_DISPOSAL
 
                 elif self._state == self.NAVIGATE_DISPOSAL:
-                    if self._loop_counter % 10 == 0:
-                        if not self._fetch_live_disposal():
-                            self._stop()
-                            print("[FSM] Disposal target lost (valid=0). Halting movement...")
-                            time.sleep(LOOP_DT)
-                            continue
 
-                    arrived = self._walk_step(self._target_dx, self._target_dy, GRASP_THRESHOLD)
-                    if arrived:
+                    valid = self._get_basket_coords_from_server()
+                    if valid:
+                        print(f"[FSM] relative target: ({self._target_dx:.3f}, {self._target_dy:.3f})")
+                    else:
+                        self._stop()
+                        if self._loop_counter % 20 == 0:
+                            print("[FSM] Target lost (valid=0). Halting movement...")
+                        time.sleep(LOOP_DT * 5)
+                        continue
+
+                    distance = math.hypot(self._target_dx, self._target_dy)
+
+                    if(distance > BASKET_THRESHOLD):
+                        self._walk_step(self._target_dx, self._target_dy)
+                    else:
                         print(f"[FSM] Arrived at disposal location")
                         self._state = self.DISPOSE
-                    else:
                         self._log_pos()
-                        time.sleep(max(0.0, LOOP_DT - (time.time() - loop_start)))
+                        time.sleep(LOOP_DT)
                         continue
 
                 elif self._state == self.DISPOSE:
                     print(f"[FSM] Disposing trash...")
                     self.dog.claw(CLAW_OPEN)
                     time.sleep(1.0)
-                    self.dog.arm(ARM_HOME_X, ARM_HOME_Z)
+                    self.dog.arm(ARM_HOME_X , ARM_HOME_Z)
                     time.sleep(1.0)
                     self.memory.clear_target()  
                     self._state = self.IDLE
