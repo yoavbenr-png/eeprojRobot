@@ -25,7 +25,7 @@ REST_API_KEY     = ''
 FORWARD_SPEED       = 10   
 FORWARD_SPEED_MS    = 0.18  
 
-CAMERA_RANGE        = 0.37
+CAMERA_RANGE        = 0.40
 # Stop this far before a locked trash target, then switch to camera mode.
 TARGET_LOCK_STOP_DISTANCE_M = 0.35
 GRASP_THRESHOLD     = 0.25  

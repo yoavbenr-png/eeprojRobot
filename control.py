@@ -381,7 +381,7 @@ class Controller:
                     angle = abs(math.degrees(math.atan2(self._target_dy, self._target_dx)))
 
 
-                    if(distance > BASKET_THRESHOLD or self._target_dx < 0 or angle > STOP_AND_TURN_DEG):
+                    if(distance > BASKET_THRESHOLD or self._target_dx < 0 or angle > 45):
                         self._walk_step(self._target_dx, self._target_dy)
                     else:
                         print(f"[FSM] Arrived at disposal location")
