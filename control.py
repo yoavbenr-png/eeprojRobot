@@ -9,6 +9,8 @@ import time
 import numpy as np
 from xgolib import XGO
 import urllib
+import urllib.request 
+import urllib.error
 
 from config import *
 #from network import SharedMemory, NetworkLayer
@@ -117,7 +119,7 @@ class Controller:
         Fetches the target from memory. 
         Returns True if a valid target exists, False if valid=0 or lost.
         """
-        target = self.memory.get_target()
+        #target = self.memory.get_target()
         if target is None:
             return False
         
@@ -133,7 +135,7 @@ class Controller:
         Fetches the target from memory. 
         Returns True if a valid target exists, False if valid=0 or lost.
         """
-        disposal = self.memory.get_disposal()
+        #disposal = self.memory.get_disposal()
         if disposal is None:
             return False
         
@@ -158,8 +160,8 @@ class Controller:
                 self._stop()
                 print("[FSM] No valid target (valid=0) — staying IDLE")
             return (cmd.get('valid') == 1)
-        except Exception: 
-            print("Can't connect to server.")
+        except Exception as e:
+            print(f"[NETWORK] Can't connect to server: {e}")
             exit(1)
             
                 
@@ -223,9 +225,10 @@ class Controller:
 
         try:
             while True:
+                self.send_battery_status()
                 loop_start = time.time()
                 self._loop_counter += 1
-
+                time.sleep(LOOP_DT)
                 if self._state == self.IDLE:
                     time.sleep(LOOP_DT * 10)
                     valid = self._get_garbage_coords_from_server()
@@ -240,11 +243,10 @@ class Controller:
                         if self._loop_counter % 20 == 0:
                             print("[FSM] Target lost (valid=0). Halting movement...")
                         continue
-                    time.sleep(LOOP_DT)
 
                     distance = math.hypot(self._target_dx, self._target_dy)
                     
-                    if distance < CAMERA_RANGE and self._target_dx >= 0:
+                    if distance < CAMERA_RANGE and self._target_dx > 0:  # Only check camera if target is in front
                         print(f"[FSM] Distance {distance:.3f}m — stopping to check camera")
                         self._stop()
                         self.dog.translation('z', BODY_HEIGHT_CROUCH)
@@ -331,7 +333,7 @@ class Controller:
                         print(f"[FSM] GRASP → IDLE")
                         self._state = self.IDLE
 
-                    self.memory.clear_target()
+                    #self.memory.clear_target()
                     time.sleep(LOOP_DT)
                     continue
 
@@ -376,7 +378,7 @@ class Controller:
 
                     distance = math.hypot(self._target_dx, self._target_dy)
 
-                    if(distance > BASKET_THRESHOLD):
+                    if(distance > BASKET_THRESHOLD or self._target_dx < 0):
                         self._walk_step(self._target_dx, self._target_dy)
                     else:
                         print(f"[FSM] Arrived at disposal location")
@@ -391,9 +393,9 @@ class Controller:
                     time.sleep(1.0)
                     self.dog.claw(CLAW_OPEN)
                     time.sleep(1.0)
-                    self.dog.arm(ARM_HOME_X , ARM_HOME_Z)
+                    self.dog.arm(50 , 50)
                     time.sleep(1.0)
-                    self.memory.clear_target()  
+                    #self.memory.clear_target()  
                     self._state = self.IDLE
                     time.sleep(LOOP_DT)
                     continue
@@ -411,7 +413,7 @@ class Controller:
 
 if __name__ == '__main__':
     #mem = SharedMemory()
-    controller = Controller(mem)
+    controller = Controller()
     
     def get_current_state():
         return controller._state
