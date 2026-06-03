@@ -59,7 +59,7 @@ class Controller:
         """Logs the current distance and angle relative to the active target."""
         ts = time.time()
         dist = math.hypot(self._target_dx, self._target_dy)
-        angle = math.degrees(math.atan2(self._target_dy, self._target_dx))
+        angle = math.degrees(math.atan2(self._target_dx, self._target_dy))
         self._log.write(f"{ts:.3f},{dist:.4f},{angle:.2f},{self._state}\n")
         self._log.flush()
 
@@ -76,7 +76,7 @@ class Controller:
         """
         distance = math.hypot(dx, dy)    
 
-        angle_to_target = math.degrees(math.atan2(dy, dx))
+        angle_to_target = math.degrees(math.atan2(dx, dy))
 
         # --- THE FAILSAFE FIX: Ensure angle is small AND target is physically in front (dx > 0) ---
         if abs(angle_to_target) > STOP_AND_TURN_DEG or dx <= 0:
