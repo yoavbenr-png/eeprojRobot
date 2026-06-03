@@ -11,7 +11,7 @@ from xgolib import XGO
 import urllib
 
 from config import *
-from network import SharedMemory, NetworkLayer
+#from network import SharedMemory, NetworkLayer
 from grasp import GraspController
 
 
@@ -28,8 +28,7 @@ class Controller:
     NAVIGATE_DISPOSAL = 'NAVIGATE_DISPOSAL'
     DISPOSE           = 'DISPOSE'
 
-    def __init__(self, shared_mem: SharedMemory):
-        self.memory = shared_mem
+    def __init__(self):
         self.dog    = XGO(port='/dev/ttyAMA0', version='mini')
         self.grasp  = GraspController(self.dog)
 
@@ -411,11 +410,11 @@ class Controller:
 
 
 if __name__ == '__main__':
-    mem = SharedMemory()
+    #mem = SharedMemory()
     controller = Controller(mem)
     
     def get_current_state():
         return controller._state
 
-    NetworkLayer(mem, state_callback=get_current_state).start()
+    #NetworkLayer(mem, state_callback=get_current_state).start()
     controller.run()
