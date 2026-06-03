@@ -58,8 +58,8 @@ class Controller:
     def _log_pos(self):
         """Logs the current distance and angle relative to the active target."""
         ts = time.time()
-        dist = math.hypot(self._target_dx, self._target_dy)
-        angle = math.degrees(math.atan2(self._target_dx, self._target_dy))
+        dist = math.hypot(self._target_dy, self._target_dx)
+        angle = math.degrees(math.atan2(self._target_dy, self._target_dx))
         self._log.write(f"{ts:.3f},{dist:.4f},{angle:.2f},{self._state}\n")
         self._log.flush()
 
@@ -76,7 +76,7 @@ class Controller:
         """
         distance = math.hypot(dx, dy)    
 
-        angle_to_target = math.degrees(math.atan2(dx, dy))
+        angle_to_target = math.degrees(math.atan2(dy, dx))
 
         # --- THE FAILSAFE FIX: Ensure angle is small AND target is physically in front (dx > 0) ---
         if abs(angle_to_target) > STOP_AND_TURN_DEG or dx <= 0:
@@ -86,9 +86,9 @@ class Controller:
                 -MAX_TURN_CMD, MAX_TURN_CMD
             ))
             
-            min_turn = 12
-            if 0 < turn_cmd < min_turn: turn_cmd = min_turn
-            elif 0 > turn_cmd > -min_turn: turn_cmd = -min_turn
+            # min_turn = 12
+            # if 0 < turn_cmd < min_turn: turn_cmd = min_turn
+            # elif 0 > turn_cmd > -min_turn: turn_cmd = -min_turn
 
             print(f"[FSM] STOP+TURN  err={angle_to_target:+.1f}°  cmd={turn_cmd}")
             self.dog.move_x(0)
@@ -245,8 +245,9 @@ class Controller:
                         continue
 
                     distance = math.hypot(self._target_dx, self._target_dy)
-                    
-                    if distance < CAMERA_RANGE and self._target_dx > 0:  # Only check camera if target is in front
+                    angle = abs(math.degrees(math.atan2(self._target_dy, self._target_dx)))
+
+                    if distance < CAMERA_RANGE and self._target_dx > 0 and angle < STOP_AND_TURN_DEG:  # Only check camera if target is in front
                         print(f"[FSM] Distance {distance:.3f}m — stopping to check camera")
                         self._stop()
                         self.dog.translation('z', BODY_HEIGHT_CROUCH)
@@ -377,8 +378,10 @@ class Controller:
                         continue
 
                     distance = math.hypot(self._target_dx, self._target_dy)
+                    angle = abs(math.degrees(math.atan2(self._target_dy, self._target_dx)))
 
-                    if(distance > BASKET_THRESHOLD or self._target_dx < 0):
+
+                    if(distance > BASKET_THRESHOLD or self._target_dx < 0 or angle > STOP_AND_TURN_DEG):
                         self._walk_step(self._target_dx, self._target_dy)
                     else:
                         print(f"[FSM] Arrived at disposal location")
