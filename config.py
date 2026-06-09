@@ -30,14 +30,16 @@ CAMERA_RANGE        = 0.40
 TARGET_LOCK_STOP_DISTANCE_M = 0.35
 GRASP_THRESHOLD     = 0.25  
 
-# FIXED: Dropped to 8cm so the 8.8cm arm drops the item perfectly in the center
-BASKET_THRESHOLD    = 0.40  
+# The distance threshold for considering the dog the basket
+BASKET_THRESHOLD    = 0.42  
 
-# FIXED: HYSTERESIS NAVIGATION
-# Allow 12 deg of wobble while walking. But if it stops to pivot, force 3 deg accuracy.
+
+# Allow WALK_MAX_HEADING_ERR deg of wobble while walking. But if it stops to pivot, force 3 deg accuracy.
 WALK_MAX_HEADING_ERR = 12.0   
-ALIGN_TARGET_DEG     = 3.0   
+ALIGN_TARGET_DEG     = 3.0  
 
+MIN_FWD_THRESHOLD = 10.0
+MIN_TURN_THRESHOLD = 3.0
 # --- Turning and Alignment Constants ---
 STOP_AND_TURN_DEG = 15.0      # Stop walking and turn if the error is larger than this
 ALIGN_THRESHOLD_DEG = 2.0    # Margin of error for the dog.turn_to() command
@@ -61,7 +63,7 @@ ARM_Z_OFFSET = -200
 ARM_HOME_X   =   30      
 ARM_HOME_Z   =   50    
 ARM_FORWARD_Z   =  0
-ARM_FORWARD_X   =  155
+ARM_FORWARD_X   =  130
 CLAW_OPEN    =   0
 CLAW_CLOSED  = 255     
 
@@ -120,7 +122,7 @@ VISUAL_SIZE_STEP_TIME       = 0.15
 VISUAL_SIZE_MAX_APPROACHES  = 2     
 
 # ── Vision — Phase 2: SERVO ───────────────────────────────────────────
-VISUAL_H_TOLERANCE       = 0.04  
+VISUAL_H_TOLERANCE       = 0.03  
 VISUAL_CY_TARGET_FRAC    = 0.90
 VISUAL_CY_GRASP_MIN_FRAC = 0.89
 VISUAL_CY_GRASP_MAX_FRAC = 0.94

@@ -4,7 +4,7 @@ vision.py — camera-based object detection and pre-grasp alignment.
 
 import time
 from typing import Optional
-
+import math
 import cv2
 import numpy as np
 
@@ -281,6 +281,12 @@ class VisionController:
         self._stop()
         time.sleep(0.35)
 
+    def clamp_small_value(val, min_threshold=1.0):
+        # Check if the magnitude is strictly between 0 and the threshold
+        if 0 < abs(val) < min_threshold:
+            return math.copysign(min_threshold, val)
+        return val
+
     # ------------------------------------------------------------------ Phase 2: SERVO
 
     def _servo(self, cap) -> bool:
@@ -303,10 +309,10 @@ class VisionController:
                     print("[Vision] Servo: object temporarily lost — trying local reacquire")
                     if self._reacquire_nearby(cap):
                         continue
-
-                    print("[Vision] Servo: local reacquire failed — doing full scan again")
-                    if self._scan(cap):
-                        continue
+                    
+                    # print("[Vision] Servo: local reacquire failed — doing full scan again")
+                    # if self._scan(cap):
+                    #     continue
 
                     return False
 
@@ -317,23 +323,12 @@ class VisionController:
             cy_err = (cy - cy_target) / CAMERA_HEIGHT
             
             h_aligned = abs(h_err) <= VISUAL_H_TOLERANCE
-            in_grasp_band = VISUAL_CY_GRASP_MIN_FRAC <= cy_frac <= VISUAL_CY_GRASP_MAX_FRAC
 
-            converged = h_aligned and in_grasp_band
-
-            if converged:
-                self._stop()
-                print(f"[Vision] Servo {step:02d}  cx={cx}  cy={cy:.0f}  "
-                      f"cy_frac={cy_frac:.3f} range=[{VISUAL_CY_GRASP_MIN_FRAC:.2f}, {VISUAL_CY_GRASP_MAX_FRAC:.2f}]  "
-                      f"h_err={h_err:+.3f}  ✓ CONVERGED")
-                return True
-
-            if h_aligned and cy_frac > VISUAL_CY_GRASP_MAX_FRAC:
-                # Already past the desired band. Avoid pushing the target away.
+            if h_aligned:
                 self._stop()
                 print(f"[Vision] Servo {step:02d}  cx={cx}  cy={cy:.0f}  "
                       f"cy_frac={cy_frac:.3f} > {VISUAL_CY_GRASP_MAX_FRAC:.2f}  "
-                      f"h_err={h_err:+.3f}  ✓ CLOSE ENOUGH / GRASP")
+                      f"h_err={h_err:+.3f}  ✓ H_ALIGNED")
                 return True
 
             turn_cmd = int(np.clip(h_err * VISUAL_TURN_SPEED_MAX, -VISUAL_TURN_SPEED_MAX, VISUAL_TURN_SPEED_MAX))
@@ -352,10 +347,17 @@ class VisionController:
             # Move forward only while the object is still above the grasp band.
             # Once cy_frac reaches VISUAL_CY_GRASP_MIN_FRAC, the next loop will initiate grasp.
             fwd_cmd = VISUAL_APPROACH_SPEED if cy_frac < VISUAL_CY_GRASP_MIN_FRAC else 0
-
+            fwd_cmd = self.clamp_small_value(fwd_cmd, MIN_FWD_THRESHOLD)
+            turn_cmd = self.clamp_small_value(turn_cmd, MIN_TURN_THRESHOLD)
             print(f"[Vision] Servo {step:02d} [COMBINED] cx={cx} cy={cy:.0f} cy_frac={cy_frac:.3f} h_err={h_err:+.3f} cy_err={cy_err:+.3f} turn={turn_cmd:+d} fwd={fwd_cmd:+d}")
-            self.dog.move_x(fwd_cmd)
-            self.dog.turn(turn_cmd)
+            if(fwd_cmd != 0):
+                self.dog.move_x(fwd_cmd)
+                print(f"[Vision] Moving forward at speed {fwd_cmd}")
+                time.sleep(0.5)
+            if(turn_cmd != 0):
+                self.dog.turn(turn_cmd)
+                print(f"[Vision] Turning at speed {turn_cmd}")
+                time.sleep(0.5)
             time.sleep(VISUAL_SERVO_DT)
 
         self._stop()

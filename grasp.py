@@ -30,7 +30,7 @@ class GraspController:
         found = self.vision.scan_and_align()
 
         if not found:
-            print("[Grasp] Object not found — standing up and signalling walk-home")
+            print("[Grasp] Object not found — standing up and retrying")
             self.dog.attitude('p', 0)
             time.sleep(0.8)
             self.dog.translation('z', BODY_HEIGHT_NORMAL)

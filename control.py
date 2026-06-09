@@ -230,7 +230,6 @@ class Controller:
                 self._loop_counter += 1
                 time.sleep(LOOP_DT)
                 if self._state == self.IDLE:
-                    time.sleep(LOOP_DT * 10)
                     valid = self._get_garbage_coords_from_server()
                     if valid:
                         print(f"[FSM] IDLE → NAVIGATE_EXTERNAL")
@@ -349,7 +348,7 @@ class Controller:
                         self._stop()
                         if self._loop_counter % 20 == 0:
                             print("[FSM] Target lost (valid=0). Halting movement...")
-                        time.sleep(LOOP_DT * 5)
+                        time.sleep(LOOP_DT)
                         continue
 
                     distance = math.hypot(self._target_dx, self._target_dy)
@@ -368,6 +367,7 @@ class Controller:
                 elif self._state == self.DISPOSE:
                     print(f"[FSM] Disposing trash...")
                     self._stop()
+                    time.sleep(0.5)
                     self.dog.arm(ARM_FORWARD_X, ARM_FORWARD_Z)
                     time.sleep(1.5)
                     self.dog.claw(CLAW_OPEN)
