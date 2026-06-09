@@ -281,7 +281,7 @@ class VisionController:
         self._stop()
         time.sleep(0.35)
 
-    def clamp_small_value(val, min_threshold=1.0):
+    def clamp_small_value(self, val, min_threshold=1.0):
         # Check if the magnitude is strictly between 0 and the threshold
         if 0 < abs(val) < min_threshold:
             return math.copysign(min_threshold, val)
@@ -334,11 +334,7 @@ class VisionController:
             turn_cmd = int(np.clip(h_err * VISUAL_TURN_SPEED_MAX, -VISUAL_TURN_SPEED_MAX, VISUAL_TURN_SPEED_MAX))
 
             if abs(h_err) > VISUAL_SERVO_TURN_ONLY_H:
-                print(f"[Vision] Servo {step:02d} [SLOW-TURN] cx={cx} cy={cy:.0f} h_err={h_err:+.3f} turn={turn_cmd:+d}")
-                self.dog.move_x(0)
-                self.dog.turn(turn_cmd)
-                time.sleep(VISUAL_SERVO_DT)
-                continue
+                print(f"[Vision] Servo {step:02d} [SLOW-TURN] cx={cx} cy={cy:.0f} h_err={h_err:+.3f}")
             else:
                 # Only kill the turn command if we are safely inside our target alignment tolerance
                 if h_aligned:
@@ -349,7 +345,7 @@ class VisionController:
             fwd_cmd = VISUAL_APPROACH_SPEED if cy_frac < VISUAL_CY_GRASP_MIN_FRAC else 0
             fwd_cmd = self.clamp_small_value(fwd_cmd, MIN_FWD_THRESHOLD)
             turn_cmd = self.clamp_small_value(turn_cmd, MIN_TURN_THRESHOLD)
-            print(f"[Vision] Servo {step:02d} [COMBINED] cx={cx} cy={cy:.0f} cy_frac={cy_frac:.3f} h_err={h_err:+.3f} cy_err={cy_err:+.3f} turn={turn_cmd:+d} fwd={fwd_cmd:+d}")
+            print(f"[Vision] Servo {step:02d} [COMBINED] cx={cx} cy={cy:.0f} cy_frac={cy_frac:.3f} h_err={h_err:+.3f} cy_err={cy_err:+.3f} turn={turn_cmd} fwd={fwd_cmd}")
             if(fwd_cmd != 0):
                 self.dog.move_x(fwd_cmd)
                 print(f"[Vision] Moving forward at speed {fwd_cmd}")
