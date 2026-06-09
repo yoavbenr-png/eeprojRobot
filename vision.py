@@ -345,7 +345,10 @@ class VisionController:
                 time.sleep(VISUAL_SERVO_DT)
                 continue
             else:
-                turn_cmd = 0
+                # Only kill the turn command if we are safely inside our target alignment tolerance
+                if h_aligned:
+                    turn_cmd = 0
+
             # Move forward only while the object is still above the grasp band.
             # Once cy_frac reaches VISUAL_CY_GRASP_MIN_FRAC, the next loop will initiate grasp.
             fwd_cmd = VISUAL_APPROACH_SPEED if cy_frac < VISUAL_CY_GRASP_MIN_FRAC else 0
@@ -361,19 +364,16 @@ class VisionController:
     # ------------------------------------------------------------------ public
 
     def scan_and_align(self) -> bool:
-
         self.open_nav_camera()    
-            
-
         print("[Vision] === scan_and_align start ===")
-        
         found = False
 
         try:
             for size_attempt in range(VISUAL_SIZE_MAX_APPROACHES + 1):    
                 found = self._servo(self._nav_cap)
                 if not found:
-                    continue
+                    print("[Vision] Target completely lost. Aborting alignment loop.")
+                    break # Break early; don't waste time repeating full scans
 
                 if self._object_big_enough_for_pickup():
                     break

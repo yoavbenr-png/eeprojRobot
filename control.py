@@ -328,8 +328,8 @@ class Controller:
                     success = self.grasp.execute(self._target_dz)
 
                     if success:
-                        print(f"[FSM] GRASP → HOLDING")
-                        self._state = self.HOLDING
+                        print(f"[FSM] GRASP → NAVIGATE_DISPOSAL")
+                        self._state = self.NAVIGATE_DISPOSAL
                     else:
                         print(f"[FSM] GRASP failed (object not found in scan)")
                         print(f"[FSM] GRASP → IDLE")
@@ -339,32 +339,6 @@ class Controller:
                     time.sleep(LOOP_DT)
                     continue
 
-                elif self._state == self.HOLDING:
-
-                    cmd = None
-                    try:
-                        time.sleep(LOOP_DT * 10)
-                        req = urllib.request.Request(REST_API_BASKET)
-                        with urllib.request.urlopen(req, timeout=REST_API_TIMEOUT) as resp:
-                            cmd = json.loads(resp.read().decode('utf-8'))
-                        
-                        # THE FIX: Check that x/y exist AND valid is exactly 1
-                        if 'x' in cmd and 'y' in cmd and cmd.get('valid') == 1:
-                            self._target_dx = cmd['x']
-                            self._target_dy = cmd['y']
-                        else:
-                            self._stop()
-                            print("[FSM] Holding trash, waiting for valid relative disposal location...")
-                        
-                            
-                    except Exception: 
-                        print("Can't connect to server.")
-                        exit(1)
-                    
-                    
-                    print(f"[FSM] Disposal location received: ({self._target_dx:.3f}, {self._target_dy:.3f})")
-                    print(f"[FSM] HOLDING → NAVIGATE_DISPOSAL")
-                    self._state = self.NAVIGATE_DISPOSAL
 
                 elif self._state == self.NAVIGATE_DISPOSAL:
 
