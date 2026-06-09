@@ -4,7 +4,7 @@ config.py — all tunable constants for the XGO-Mini pick-up task.
 
 # ── Network ───────────────────────────────────────────────────────────
 LISTEN_PORT = 4999          
-COMPUTER_IP = '10.182.211.26'        
+COMPUTER_IP = '10.196.208.26'        
 
 COORD_SOURCE = 'rest'        
 COORD_FILE_PATH = '/tmp/trash_coords.json'
@@ -15,9 +15,9 @@ FIXED_BASKET_X = 0.0
 FIXED_BASKET_Y = 0.33
 
 # ── REST API ──────────────────────────────────────────────────────────
-REST_API_GARBAGE     = 'http://10.182.211.26:4999/api/garbage' 
-REST_API_BASKET     = 'http://10.182.211.26:4999/api/basket'
-REST_API_BATTERY    = 'http://10.182.211.26:4999/api/set_battery'  
+REST_API_GARBAGE     = f'http://{COMPUTER_IP}:{LISTEN_PORT}/api/garbage' 
+REST_API_BASKET     = f'http://{COMPUTER_IP}:{LISTEN_PORT}/api/basket'
+REST_API_BATTERY    = f'http://{COMPUTER_IP}:{LISTEN_PORT}/api/set_battery'  
 REST_API_TIMEOUT = 10.0  
 REST_API_KEY     = ''    
 
@@ -41,7 +41,7 @@ ALIGN_TARGET_DEG     = 3.0
 # --- Turning and Alignment Constants ---
 STOP_AND_TURN_DEG = 15.0      # Stop walking and turn if the error is larger than this
 ALIGN_THRESHOLD_DEG = 2.0    # Margin of error for the dog.turn_to() command
-MAX_TURN_CMD = 5            # Maximum speed for standard turning
+MAX_TURN_CMD = 10            # Maximum speed for standard turning
 TURN_VYAW = 5               # Turning speed for proportional visual turning  
 
 MAX_TURN_CMD        = 25    
@@ -49,23 +49,25 @@ TURN_VYAW           = 60
 LOOP_DT             = 0.10  
 
 # ── Camera approach ───────────────────────────────────────────────────
-CAM_APPROACH_SPEED    = 14    
+CAM_APPROACH_SPEED    = 10    
 CAM_APPROACH_SPEED_MS = 0.04  
 CAM_STOP_CY_FRAC      = 0.82  
 CAM_LOST_RETRIES      = 25    
 
 # ── Arm ───────────────────────────────────────────────────────────────
-ARM_REACH_X  =  88      
+ARM_REACH_X  =  88   
 ARM_Z_SCALE  = 800.0    
 ARM_Z_OFFSET = -200     
-ARM_HOME_X   =   15      
-ARM_HOME_Z   =   15    
+ARM_HOME_X   =   30      
+ARM_HOME_Z   =   50    
+ARM_FORWARD_Z   =  0
+ARM_FORWARD_X   =  155
 CLAW_OPEN    =   0
 CLAW_CLOSED  = 255     
 
 # ── Final Forward Step ────────────────────────────────────────────────
 FINAL_STEP_SPEED = 14    
-FINAL_STEP_TIME  = 0.4   
+FINAL_STEP_TIME  = 0.6   
 
 # ── Body pose ─────────────────────────────────────────────────────────
 BODY_HEIGHT_NORMAL = 105    
@@ -119,8 +121,8 @@ VISUAL_SIZE_MAX_APPROACHES  = 2
 
 # ── Vision — Phase 2: SERVO ───────────────────────────────────────────
 VISUAL_H_TOLERANCE       = 0.04  
-VISUAL_CY_TARGET_FRAC    = 0.94
-VISUAL_CY_GRASP_MIN_FRAC = 0.90
+VISUAL_CY_TARGET_FRAC    = 0.90
+VISUAL_CY_GRASP_MIN_FRAC = 0.89
 VISUAL_CY_GRASP_MAX_FRAC = 0.94
 
 VISUAL_CY_TOLERANCE      = 0.02  
@@ -129,7 +131,7 @@ VISUAL_SERVO_TURN_ONLY_H = 0.45
 VISUAL_TURN_SPEED_MAX    = 5    
 VISUAL_APPROACH_SPEED    = 12    
 
-VISUAL_SERVO_ITER        = 60    
+VISUAL_SERVO_ITER        = 30    
 VISUAL_SERVO_DT          = 0.08  
 
 QUICK_DETECT_FRAMES = 4          

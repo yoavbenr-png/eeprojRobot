@@ -55,11 +55,11 @@ class GraspController:
 
         print("[Grasp] 6/9  Closing claw")
         self.dog.claw(CLAW_CLOSED)
-        time.sleep(1.0)
+        time.sleep(2.0)
 
-        #print("[Grasp] 7/9  Retracting arm")
-        #self.dog.arm(ARM_HOME_X, ARM_HOME_Z)
-        #time.sleep(1.0)
+        print("[Grasp] 7/9  Retracting arm")
+        self.dog.arm(ARM_HOME_X, ARM_HOME_Z)
+        time.sleep(1.0)
 
         print("[Grasp] 8/9  Levelling body")
         self.dog.attitude('p', 0)

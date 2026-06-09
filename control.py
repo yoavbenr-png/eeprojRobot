@@ -82,7 +82,7 @@ class Controller:
         if abs(angle_to_target) > STOP_AND_TURN_DEG or dx <= 0:
             # ALIGNMENT PHASE: Stop walking, spin in place
             turn_cmd = int(np.clip(
-                (angle_to_target / STOP_AND_TURN_DEG) * 5, 
+                (angle_to_target / STOP_AND_TURN_DEG) * MAX_TURN_CMD, 
                 -MAX_TURN_CMD, MAX_TURN_CMD
             ))
             
@@ -236,6 +236,7 @@ class Controller:
                         print(f"[FSM] IDLE → NAVIGATE_EXTERNAL")
                         print(f"[FSM] Initial relative target: ({self._target_dx:.3f}, {self._target_dy:.3f})")
                         self._state = self.NAVIGATE_EXTERNAL
+
                 elif self._state == self.NAVIGATE_EXTERNAL:
                     # SAFETY CHECK: Stop instantly if valid=0
                     if not self._get_garbage_coords_from_server():
@@ -393,10 +394,11 @@ class Controller:
                 elif self._state == self.DISPOSE:
                     print(f"[FSM] Disposing trash...")
                     self._stop()
-                    time.sleep(1.0)
+                    self.dog.arm(ARM_FORWARD_X, ARM_FORWARD_Z)
+                    time.sleep(1.5)
                     self.dog.claw(CLAW_OPEN)
                     time.sleep(1.0)
-                    self.dog.arm(50 , 50)
+                    self.dog.arm(ARM_HOME_X, ARM_HOME_Z)
                     time.sleep(1.0)
                     #self.memory.clear_target()  
                     self._state = self.IDLE

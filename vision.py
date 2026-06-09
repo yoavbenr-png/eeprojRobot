@@ -285,12 +285,7 @@ class VisionController:
 
     def _servo(self, cap) -> bool:
         cy_target = VISUAL_CY_TARGET_FRAC * CAMERA_HEIGHT
-        # Grasp band based on cy_frac = cy / CAMERA_HEIGHT.
-        # Ready for grasp when 0.88 <= cy_frac <= 0.94.
-        cy_min = VISUAL_CY_GRASP_MIN_FRAC
-        cy_max = VISUAL_CY_GRASP_MAX_FRAC
-        
-        # ── FIX: PARALLAX OFFSET ──
+
         # If it grabs to the right, use a POSITIVE number to shift the body left (e.g., 15)
         # If it grabs to the left, use a NEGATIVE number to shift the body right (e.g., -15)
         parallax_offset = 15
@@ -316,52 +311,44 @@ class VisionController:
                     return False
 
             self._last_detection = det
-            cx, cy, area = det
-            h_err  = (frame_cx - cx)  / frame_cx
+            cx, cy, _ = det
+            h_err = (frame_cx - cx)  / frame_cx
             cy_frac = cy / CAMERA_HEIGHT
             cy_err = (cy - cy_target) / CAMERA_HEIGHT
             
             h_aligned = abs(h_err) <= VISUAL_H_TOLERANCE
-            in_grasp_band = cy_min <= cy_frac <= cy_max
+            in_grasp_band = VISUAL_CY_GRASP_MIN_FRAC <= cy_frac <= VISUAL_CY_GRASP_MAX_FRAC
 
             converged = h_aligned and in_grasp_band
 
             if converged:
                 self._stop()
                 print(f"[Vision] Servo {step:02d}  cx={cx}  cy={cy:.0f}  "
-                      f"cy_frac={cy_frac:.3f} range=[{cy_min:.2f}, {cy_max:.2f}]  "
+                      f"cy_frac={cy_frac:.3f} range=[{VISUAL_CY_GRASP_MIN_FRAC:.2f}, {VISUAL_CY_GRASP_MAX_FRAC:.2f}]  "
                       f"h_err={h_err:+.3f}  ✓ CONVERGED")
                 return True
 
-            if h_aligned and cy_frac > cy_max:
+            if h_aligned and cy_frac > VISUAL_CY_GRASP_MAX_FRAC:
                 # Already past the desired band. Avoid pushing the target away.
                 self._stop()
                 print(f"[Vision] Servo {step:02d}  cx={cx}  cy={cy:.0f}  "
-                      f"cy_frac={cy_frac:.3f} > {cy_max:.2f}  "
+                      f"cy_frac={cy_frac:.3f} > {VISUAL_CY_GRASP_MAX_FRAC:.2f}  "
                       f"h_err={h_err:+.3f}  ✓ CLOSE ENOUGH / GRASP")
                 return True
 
-            if abs(h_err) > VISUAL_SERVO_TURN_ONLY_H:
-                turn_cmd = int(np.clip(h_err * VISUAL_TURN_SPEED_MAX, -VISUAL_TURN_SPEED_MAX, VISUAL_TURN_SPEED_MAX))
-                min_turn = 8  
-                if 0 < turn_cmd < min_turn: turn_cmd = min_turn
-                elif 0 > turn_cmd > -min_turn: turn_cmd = -min_turn
+            turn_cmd = int(np.clip(h_err * VISUAL_TURN_SPEED_MAX, -VISUAL_TURN_SPEED_MAX, VISUAL_TURN_SPEED_MAX))
 
+            if abs(h_err) > VISUAL_SERVO_TURN_ONLY_H:
                 print(f"[Vision] Servo {step:02d} [SLOW-TURN] cx={cx} cy={cy:.0f} h_err={h_err:+.3f} turn={turn_cmd:+d}")
                 self.dog.move_x(0)
                 self.dog.turn(turn_cmd)
                 time.sleep(VISUAL_SERVO_DT)
                 continue
-
-            turn_cmd = int(np.clip(h_err * VISUAL_TURN_SPEED_MAX, -VISUAL_TURN_SPEED_MAX, VISUAL_TURN_SPEED_MAX))
-            if abs(h_err) > VISUAL_H_TOLERANCE:
-                min_turn = 8
-                if 0 < turn_cmd < min_turn: turn_cmd = min_turn
-                elif 0 > turn_cmd > -min_turn: turn_cmd = -min_turn
-
+            else:
+                turn_cmd = 0
             # Move forward only while the object is still above the grasp band.
-            # Once cy_frac reaches 0.88, the next loop will initiate grasp.
-            fwd_cmd = VISUAL_APPROACH_SPEED if cy_frac < cy_min else 0
+            # Once cy_frac reaches VISUAL_CY_GRASP_MIN_FRAC, the next loop will initiate grasp.
+            fwd_cmd = VISUAL_APPROACH_SPEED if cy_frac < VISUAL_CY_GRASP_MIN_FRAC else 0
 
             print(f"[Vision] Servo {step:02d} [COMBINED] cx={cx} cy={cy:.0f} cy_frac={cy_frac:.3f} h_err={h_err:+.3f} cy_err={cy_err:+.3f} turn={turn_cmd:+d} fwd={fwd_cmd:+d}")
             self.dog.move_x(fwd_cmd)
@@ -383,10 +370,7 @@ class VisionController:
         found = False
 
         try:
-            for size_attempt in range(VISUAL_SIZE_MAX_APPROACHES + 1):
-                if not self._scan(self._nav_cap):
-                    return False        
-
+            for size_attempt in range(VISUAL_SIZE_MAX_APPROACHES + 1):    
                 found = self._servo(self._nav_cap)
                 if not found:
                     continue
