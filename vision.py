@@ -182,69 +182,6 @@ class VisionController:
 
     # ------------------------------------------------------------------ Phase 1: SCAN
 
-    def _sweep(self, cap, start_yaw: float, direction: int) -> bool:
-        steps = VISUAL_SCAN_MAX_DEG // VISUAL_SCAN_STEP_DEG
-        for i in range(1, steps + 1):
-            angle    = i * VISUAL_SCAN_STEP_DEG
-            dest_yaw = start_yaw + direction * angle
-
-            label = 'left' if direction > 0 else 'right'
-            print(f"[Vision] Sweep {label}  "
-                  f"step {i}/{steps}  angle={direction * angle:+d}°")
-            self._turn_to_yaw(dest_yaw)
-            self.dog.move_x(-1)
-            time.sleep(0.1)
-            self.dog.move_x(0)
-
-
-            det = self._look(cap)
-            if det is not None:
-                print(f"[Vision] Object found at {direction * angle:+d}° ({label}) ✓")
-                return True
-        return False
-
-    def _scan(self, cap) -> bool:
-        start_yaw = self._raw_yaw()
-
-        for scan_pass in range(1, VISUAL_SCAN_PASSES + 1):
-            print(f"[Vision] Scan pass {scan_pass}/{VISUAL_SCAN_PASSES}: straight ahead")
-            self._turn_to_yaw(start_yaw)
-
-            if self._look(cap) is not None:
-                print(f"[Vision] Object found straight ahead on pass {scan_pass} ✓")
-                return True
-
-            # ── NEW: BACKUP MANEUVER TO CLEAR BLIND SPOT ──
-            if scan_pass == 1:
-                print(f"[Vision] Target not seen straight ahead. Backing up {VISUAL_BACKUP_STEPS} steps to clear blind spot...")
-                self.dog.turn(0)
-                for b_step in range(1, VISUAL_BACKUP_STEPS + 1):
-                    self.dog.move_x(VISUAL_BACKUP_SPEED)
-                    time.sleep(VISUAL_BACKUP_TIME)
-                    self.dog.move_x(0)
-                    time.sleep(0.20)
-                
-                # Check straight ahead one more time after backing up
-                if self._look(cap) is not None:
-                    print("[Vision] Object found straight ahead after backing up ✓")
-                    return True
-            # ──────────────────────────────────────────────
-
-            directions = (-1, +1) if scan_pass % 2 == 1 else (+1, -1)
-            for direction in directions:
-                label = 'left' if direction > 0 else 'right'
-                print(f"[Vision] Scan pass {scan_pass}: sweeping {label}")
-                if self._sweep(cap, start_yaw, direction=direction):
-                    return True
-
-                print(f"[Vision] Scan pass {scan_pass}: returning to centre")
-                self._turn_to_yaw(start_yaw)
-                time.sleep(0.20)
-
-        print("[Vision] Object not found after all scan passes")
-        self._turn_to_yaw(start_yaw)
-        return False
-
     def _reacquire_nearby(self, cap) -> bool:
         base_yaw = self._raw_yaw()
         offsets = [0]
@@ -307,17 +244,11 @@ class VisionController:
 
             if det is None:
                 self._stop()
-                time.sleep(0.15)
                 det = self._analyze_new_frame(cap)
                 if det is None:
                     print("[Vision] Servo: object temporarily lost — trying local reacquire")
                     if self._reacquire_nearby(cap):
                         continue
-                    
-                    # print("[Vision] Servo: local reacquire failed — doing full scan again")
-                    # if self._scan(cap):
-                    #     continue
-
                     return False
 
             self._last_detection = det
@@ -353,11 +284,11 @@ class VisionController:
             if(fwd_cmd != 0):
                 self.dog.move_x(fwd_cmd)
                 print(f"[Vision] Moving forward at speed {fwd_cmd}")
-                time.sleep(0.5)
+                time.sleep(0.2)
             if(turn_cmd != 0):
                 self.dog.turn(turn_cmd)
                 print(f"[Vision] Turning at speed {turn_cmd}")
-                time.sleep(0.5)
+                time.sleep(0.2)
             time.sleep(VISUAL_SERVO_DT)
 
         self._stop()
@@ -388,5 +319,5 @@ class VisionController:
         finally:
             self._stop()
 
-        print("[Vision] === scan_and_align complete ===")
+        print(f"[Vision] === scan_and_align complete, found: {found} ===")
         return found

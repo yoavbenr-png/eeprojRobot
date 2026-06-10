@@ -38,8 +38,8 @@ BASKET_THRESHOLD    = 0.42
 WALK_MAX_HEADING_ERR = 12.0   
 ALIGN_TARGET_DEG     = 3.0  
 
-MIN_FWD_THRESHOLD = 10.0
-MIN_TURN_THRESHOLD = 4.0
+MIN_FWD_THRESHOLD = 7.0
+MIN_TURN_THRESHOLD = 7.0
 # --- Turning and Alignment Constants ---
 STOP_AND_TURN_DEG = 15.0      # Stop walking and turn if the error is larger than this
 ALIGN_THRESHOLD_DEG = 2.0    # Margin of error for the dog.turn_to() command
@@ -51,7 +51,7 @@ TURN_VYAW = 5               # Turning speed for proportional visual turning
 LOOP_DT             = 0.15  
 
 # ── Camera approach ───────────────────────────────────────────────────
-CAM_APPROACH_SPEED    = 10    
+CAM_APPROACH_SPEED    = 8    
 #CAM_APPROACH_SPEED_MS = 0.04  
 CAM_STOP_CY_FRAC      = 0.82  
 CAM_LOST_RETRIES      = 25    
@@ -69,7 +69,7 @@ CLAW_CLOSED  = 255
 
 # ── Final Forward Step ────────────────────────────────────────────────
 FINAL_STEP_SPEED = 14    
-FINAL_STEP_TIME  = 0.6   
+FINAL_STEP_TIME  = 0.5   
 
 # ── Body pose ─────────────────────────────────────────────────────────
 BODY_HEIGHT_NORMAL = 105    
@@ -106,13 +106,13 @@ VISUAL_SCAN_STEP_DEG    =  4
 VISUAL_SCAN_MAX_DEG     = 24   
 VISUAL_SCAN_LOOK_FRAMES =  14  
 VISUAL_SCAN_FRAME_SLEEP = 0.10 
-VISUAL_SCAN_PASSES      =  1   #The robot will attempt 1 full scanning sweeps before giving up
+VISUAL_SCAN_PASSES      =  0   #The robot will attempt 1 full scanning sweeps before giving up
 VISUAL_REACQUIRE_ANGLE_DEG = 10 
-VISUAL_REACQUIRE_TRIES  =  3  #Number of times to attempt local reacquisition. 
+VISUAL_REACQUIRE_TRIES  =  1  #Number of times to attempt local reacquisition. 
 
 VISUAL_BACKUP_STEPS     = 5      
 VISUAL_BACKUP_SPEED     = -14    
-VISUAL_BACKUP_TIME      = 0.4    
+VISUAL_BACKUP_TIME      = 0.35    
 
 # ── Vision — Size gate before pickup ─────────────────────────────────
 VISUAL_MIN_GRASP_AREA       = 100   #Target must be at least 100 pixels in area to be considered close enough to grasp
@@ -123,18 +123,18 @@ VISUAL_SIZE_MAX_APPROACHES  = 2  #Maximum number of times the robot will attempt
 
 # ── Vision — Phase 2: SERVO ───────────────────────────────────────────
 VISUAL_H_TOLERANCE       = 0.03  
-VISUAL_CY_TARGET_FRAC    = 0.90
-VISUAL_CY_GRASP_MIN_FRAC = 0.89
-VISUAL_CY_GRASP_MAX_FRAC = 0.92
+VISUAL_CY_TARGET_FRAC    = 0.91
+VISUAL_CY_GRASP_MIN_FRAC = 0.90
+VISUAL_CY_GRASP_MAX_FRAC = 0.93
 
 VISUAL_CY_TOLERANCE      = 0.02  
 
 VISUAL_SERVO_TURN_ONLY_H = 0.30 #If horizontal error exceeds 45%, the robot will stop moving forward and only turn.  
 VISUAL_TURN_SPEED_MAX    = 5    
-VISUAL_APPROACH_SPEED    = 10    
+VISUAL_APPROACH_SPEED    = 8    
 
 VISUAL_SERVO_ITER        = 20    
-VISUAL_SERVO_DT          = 0.08  
+VISUAL_SERVO_DT          = LOOP_DT  
 
 QUICK_DETECT_FRAMES = 4          
 QUICK_DETECT_SLEEP  = 0.1 #Pause time (0.1s) between frame captures during a look.
