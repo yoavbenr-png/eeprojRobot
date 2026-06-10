@@ -131,9 +131,9 @@ VISUAL_CY_TOLERANCE      = 0.02
 
 VISUAL_SERVO_TURN_ONLY_H = 0.30 #If horizontal error exceeds 45%, the robot will stop moving forward and only turn.  
 VISUAL_TURN_SPEED_MAX    = 5    
-VISUAL_APPROACH_SPEED    = 12    
+VISUAL_APPROACH_SPEED    = 10    
 
-VISUAL_SERVO_ITER        = 30    
+VISUAL_SERVO_ITER        = 20    
 VISUAL_SERVO_DT          = 0.08  
 
 QUICK_DETECT_FRAMES = 4          

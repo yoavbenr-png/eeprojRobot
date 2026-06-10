@@ -86,9 +86,9 @@ class Controller:
                 -MAX_TURN_CMD, MAX_TURN_CMD
             ))
             
-            # min_turn = 12
-            # if 0 < turn_cmd < min_turn: turn_cmd = min_turn
-            # elif 0 > turn_cmd > -min_turn: turn_cmd = -min_turn
+            min_turn = 12
+            if 0 < turn_cmd < min_turn: turn_cmd = min_turn
+            elif 0 > turn_cmd > -min_turn: turn_cmd = -min_turn
 
             print(f"[FSM] STOP+TURN  err={angle_to_target:+.1f}°  cmd={turn_cmd}")
             self.dog.move_x(0)
@@ -277,9 +277,11 @@ class Controller:
 
                 elif self._state == self.NAVIGATE_CAMERA:
                     frame_data = self.grasp.vision.quick_detect_with_position()
-
+                    print("I'm stuck here(1)")
                     if frame_data is None:
                         self._cam_lost_count = getattr(self, '_cam_lost_count', 0) + 1
+
+                        print("I'm stuck here(2)")
                         self._stop()
                         if self._cam_lost_count >= CAM_LOST_RETRIES:
                             print(f"[FSM] Lost object — falling through to GRASP for full scan")
@@ -298,7 +300,7 @@ class Controller:
                     if cy_frac >= CAM_STOP_CY_FRAC:
                         self._stop()
                         print(f"[FSM] Object in really close (cy_frac={cy_frac:.2f}) → GRASP")
-                        self.grasp.vision.close_nav_camera()
+                        # self.grasp.vision.close_nav_camera()
                         self._state = self.GRASP
                         continue
 
@@ -353,7 +355,7 @@ class Controller:
                     angle = abs(math.degrees(math.atan2(self._target_dy, self._target_dx)))
 
 
-                    if(distance > BASKET_THRESHOLD or self._target_dx < 0 or angle > 45):
+                    if(distance > BASKET_THRESHOLD or self._target_dx < 0 or abs(angle) > 25):
                         self._walk_step(self._target_dx, self._target_dy)
                     else:
                         print(f"[FSM] Arrived at disposal location")
