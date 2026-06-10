@@ -45,6 +45,12 @@ class Controller:
         self._log = open("robot_position_log.txt", "w")
         self._log.write("timestamp,dist_to_target,angle_to_target,state\n")
 
+    def clamp_small_value(self, val, min_threshold=1.0):
+        # Check if the magnitude is strictly between 0 and the threshold
+        if 0 < abs(val) < min_threshold:
+            return math.copysign(min_threshold, val)
+        return val
+
     def _steer(self, turn_cmd: int):
         """Routes a signed turn speed to the correct XGO hardware commands."""
         if turn_cmd > 0:
@@ -227,7 +233,6 @@ class Controller:
         try:
             while True:
                 self.send_battery_status()
-                loop_start = time.time()
                 self._loop_counter += 1
                 time.sleep(LOOP_DT)
                 if self._state == self.IDLE:
@@ -272,7 +277,6 @@ class Controller:
                         self._state = self.GRASP
                     else:
                         self._log_pos()
-                        time.sleep(max(0.0, LOOP_DT - (time.time() - loop_start)))
                         continue
 
                 elif self._state == self.NAVIGATE_CAMERA:
@@ -288,7 +292,6 @@ class Controller:
                             self._cam_lost_count = 0
                             self.grasp.vision.close_nav_camera()
                             self._state = self.GRASP
-                        time.sleep(max(0.0, LOOP_DT - (time.time() - loop_start)))
                         continue
 
                     self._cam_lost_count = 0
@@ -303,23 +306,26 @@ class Controller:
                         # self.grasp.vision.close_nav_camera()
                         self._state = self.GRASP
                         continue
-
+                    
                     turn_cmd = int(np.clip(
                         h_err * VISUAL_TURN_SPEED_MAX,
                         -VISUAL_TURN_SPEED_MAX, VISUAL_TURN_SPEED_MAX
                     ))
+
+                    turn_cmd = self.clamp_small_value(turn_cmd, MIN_TURN_THRESHOLD)
+                    print("this is turn cmd: " + str(turn_cmd))
 
                     if abs(h_err) < VISUAL_SERVO_TURN_ONLY_H:
                         self.dog.move_x(CAM_APPROACH_SPEED)
                         time.sleep(0.01)
                         self._steer(turn_cmd)
                     else:
+                        print("It's too little of an error, I will turn in place")
                         self.dog.move_x(0)
                         time.sleep(0.01)
                         self._steer(turn_cmd)
 
                     self._log_pos()
-                    time.sleep(max(0.0, LOOP_DT - (time.time() - loop_start)))
                     continue
 
                 elif self._state == self.GRASP:
@@ -335,7 +341,6 @@ class Controller:
                         self._state = self.IDLE
 
                     #self.memory.clear_target()
-                    time.sleep(LOOP_DT)
                     continue
 
 
@@ -348,7 +353,6 @@ class Controller:
                         self._stop()
                         if self._loop_counter % 20 == 0:
                             print("[FSM] Target lost (valid=0). Halting movement...")
-                        time.sleep(LOOP_DT)
                         continue
 
                     distance = math.hypot(self._target_dx, self._target_dy)
@@ -361,7 +365,6 @@ class Controller:
                         print(f"[FSM] Arrived at disposal location")
                         self._state = self.DISPOSE
                         self._log_pos()
-                        time.sleep(LOOP_DT)
                         continue
 
                 elif self._state == self.DISPOSE:
@@ -376,10 +379,9 @@ class Controller:
                     time.sleep(1.0)
                     #self.memory.clear_target()  
                     self._state = self.IDLE
-                    time.sleep(LOOP_DT)
+
                     continue
 
-                time.sleep(max(0.0, LOOP_DT - (time.time() - loop_start)))
 
         except KeyboardInterrupt:
             print("\n[System] Interrupted — shutting down")

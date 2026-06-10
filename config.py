@@ -39,7 +39,7 @@ WALK_MAX_HEADING_ERR = 12.0
 ALIGN_TARGET_DEG     = 3.0  
 
 MIN_FWD_THRESHOLD = 10.0
-MIN_TURN_THRESHOLD = 3.0
+MIN_TURN_THRESHOLD = 4.0
 # --- Turning and Alignment Constants ---
 STOP_AND_TURN_DEG = 15.0      # Stop walking and turn if the error is larger than this
 ALIGN_THRESHOLD_DEG = 2.0    # Margin of error for the dog.turn_to() command
@@ -48,7 +48,7 @@ TURN_VYAW = 5               # Turning speed for proportional visual turning
 
 #MAX_TURN_CMD        = 25    
 #TURN_VYAW           = 60    
-LOOP_DT             = 0.10  
+LOOP_DT             = 0.15  
 
 # ── Camera approach ───────────────────────────────────────────────────
 CAM_APPROACH_SPEED    = 10    
