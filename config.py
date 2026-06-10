@@ -42,8 +42,8 @@ MIN_FWD_THRESHOLD = 7.0
 MIN_TURN_THRESHOLD = 7.0
 # --- Turning and Alignment Constants ---
 STOP_AND_TURN_DEG = 15.0      # Stop walking and turn if the error is larger than this
-ALIGN_THRESHOLD_DEG = 2.0    # Margin of error for the dog.turn_to() command
-MAX_TURN_CMD = 10            # Maximum speed for standard turning
+ALIGN_THRESHOLD_DEG = 3.0    # Margin of error for the dog.turn_to() command
+MAX_TURN_CMD = 8            # Maximum speed for standard turning
 TURN_VYAW = 5               # Turning speed for proportional visual turning  
 
 #MAX_TURN_CMD        = 25    
@@ -125,7 +125,7 @@ VISUAL_SIZE_MAX_APPROACHES  = 2  #Maximum number of times the robot will attempt
 VISUAL_H_TOLERANCE       = 0.03  
 VISUAL_CY_TARGET_FRAC    = 0.91
 VISUAL_CY_GRASP_MIN_FRAC = 0.90
-VISUAL_CY_GRASP_MAX_FRAC = 0.93
+VISUAL_CY_GRASP_MAX_FRAC = 0.94
 
 VISUAL_CY_TOLERANCE      = 0.02  
 
