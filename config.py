@@ -68,8 +68,8 @@ CLAW_OPEN    =   0
 CLAW_CLOSED  = 255     
 
 # ── Final Forward Step ────────────────────────────────────────────────
-FINAL_STEP_SPEED = 14    
-FINAL_STEP_TIME  = 0.5   
+FINAL_STEP_SPEED = 12   
+FINAL_STEP_TIME  = 0.4   
 
 # ── Body pose ─────────────────────────────────────────────────────────
 BODY_HEIGHT_NORMAL = 105    
