@@ -346,12 +346,15 @@ class VisionController:
             fwd_cmd = self.clamp_small_value(fwd_cmd, MIN_FWD_THRESHOLD)
             turn_cmd = self.clamp_small_value(turn_cmd, MIN_TURN_THRESHOLD)
             print(f"[Vision] Servo {step:02d} [COMBINED] cx={cx} cy={cy:.0f} cy_frac={cy_frac:.3f} h_err={h_err:+.3f} cy_err={cy_err:+.3f} turn={turn_cmd} fwd={fwd_cmd}")
+            self.dog.move_x(fwd_cmd)
+            time.sleep(0.5)
+            self.dog.turn(turn_cmd)
             if(fwd_cmd != 0):
-                self.dog.move_x(fwd_cmd)
+                #self.dog.move_x(fwd_cmd)
                 print(f"[Vision] Moving forward at speed {fwd_cmd}")
                 time.sleep(0.5)
             if(turn_cmd != 0):
-                self.dog.turn(turn_cmd)
+                #self.dog.turn(turn_cmd)
                 print(f"[Vision] Turning at speed {turn_cmd}")
                 time.sleep(0.5)
             time.sleep(VISUAL_SERVO_DT)

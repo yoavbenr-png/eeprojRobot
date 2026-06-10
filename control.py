@@ -99,14 +99,15 @@ class Controller:
             # WALKING PHASE: Facing target, move forward
             
             # The Deadband Smoothing + Failsafe
-            if abs(angle_to_target) < 5.0 and dx > 0:
-                turn_cmd = 0  # Walk perfectly straight!
-            else:
-                turn_cmd = int(np.clip(
-                    (angle_to_target / STOP_AND_TURN_DEG) * MAX_TURN_CMD,
-                    -MAX_TURN_CMD, MAX_TURN_CMD,
-                ))
+           # if abs(angle_to_target) < 5.0 and dx > 0:
+            #    turn_cmd = 0  # Walk perfectly straight!
+            #else:
+             #   turn_cmd = int(np.clip(
+             #       (angle_to_target / STOP_AND_TURN_DEG) * MAX_TURN_CMD,
+              #      -MAX_TURN_CMD, MAX_TURN_CMD,
+              #  ))
             
+            turn_cmd = 0  # Walk perfectly straight!
             print(f"[FSM] WALK  dist={distance:.3f} m  err={angle_to_target:+.1f}°  cmd={turn_cmd}")
             self.dog.move_x(FORWARD_SPEED)
             time.sleep(0.01)
@@ -240,7 +241,7 @@ class Controller:
                     # SAFETY CHECK: Stop instantly if valid=0
                     if not self._get_garbage_coords_from_server():
                         self._stop()
-                        if self._loop_counter % 20 == 0:
+                        if self._loop_counter % 20 == 0: #FIXME - maybe change if statment because after 20 itreations it will not enter
                             print("[FSM] Target lost (valid=0). Halting movement...")
                         continue
 
@@ -296,7 +297,7 @@ class Controller:
 
                     if cy_frac >= CAM_STOP_CY_FRAC:
                         self._stop()
-                        print(f"[FSM] Object in grasp zone (cy_frac={cy_frac:.2f}) → GRASP")
+                        print(f"[FSM] Object in really close (cy_frac={cy_frac:.2f}) → GRASP")
                         self.grasp.vision.close_nav_camera()
                         self._state = self.GRASP
                         continue
@@ -311,9 +312,6 @@ class Controller:
                         time.sleep(0.01)
                         self._steer(turn_cmd)
                     else:
-                        min_turn = 12
-                        if 0 < turn_cmd < min_turn: turn_cmd = min_turn
-                        elif 0 > turn_cmd > -min_turn: turn_cmd = -min_turn
                         self.dog.move_x(0)
                         time.sleep(0.01)
                         self._steer(turn_cmd)
