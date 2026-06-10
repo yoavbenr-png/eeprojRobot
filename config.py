@@ -34,17 +34,12 @@ GRASP_THRESHOLD     = 0.25
 BASKET_THRESHOLD    = 0.42  
 
 
-# Allow WALK_MAX_HEADING_ERR deg of wobble while walking. But if it stops to pivot, force 3 deg accuracy.
-WALK_MAX_HEADING_ERR = 12.0   
-ALIGN_TARGET_DEG     = 3.0  
-
 MIN_FWD_THRESHOLD = 7.0
 MIN_TURN_THRESHOLD = 7.0
 # --- Turning and Alignment Constants ---
 STOP_AND_TURN_DEG = 15.0      # Stop walking and turn if the error is larger than this
-ALIGN_THRESHOLD_DEG = 3.0    # Margin of error for the dog.turn_to() command
-MAX_TURN_CMD = 8            # Maximum speed for standard turning
-TURN_VYAW = 5               # Turning speed for proportional visual turning  
+MAX_TURN_CMD = 7            # Maximum speed for standard turning
+
 
 #MAX_TURN_CMD        = 25    
 #TURN_VYAW           = 60    
@@ -52,7 +47,6 @@ LOOP_DT             = 0.15
 
 # ── Camera approach ───────────────────────────────────────────────────
 CAM_APPROACH_SPEED    = 8    
-#CAM_APPROACH_SPEED_MS = 0.04  
 CAM_STOP_CY_FRAC      = 0.82  
 CAM_LOST_RETRIES      = 25    
 
@@ -68,8 +62,8 @@ CLAW_OPEN    =   0
 CLAW_CLOSED  = 255     
 
 # ── Final Forward Step ────────────────────────────────────────────────
-FINAL_STEP_SPEED = 12   
-FINAL_STEP_TIME  = 0.4   
+FINAL_STEP_SPEED = 10   
+FINAL_STEP_TIME  = 0.35  
 
 # ── Body pose ─────────────────────────────────────────────────────────
 BODY_HEIGHT_NORMAL = 105    
@@ -101,12 +95,8 @@ TARGET_COLORS = [
 OBJ_MIN_AREA = 100     # The absolute minimum contour area (in pixels) to consider a detection valid.
 
 # ── Vision — Phase 1: SCAN ────────────────────────────────────────────
-CAMERA_HFOV_DEG         = 62.2 
-VISUAL_SCAN_STEP_DEG    =  4   
-VISUAL_SCAN_MAX_DEG     = 24   
 VISUAL_SCAN_LOOK_FRAMES =  14  
 VISUAL_SCAN_FRAME_SLEEP = 0.10 
-VISUAL_SCAN_PASSES      =  0   #The robot will attempt 1 full scanning sweeps before giving up
 VISUAL_REACQUIRE_ANGLE_DEG = 10 
 VISUAL_REACQUIRE_TRIES  =  1  #Number of times to attempt local reacquisition. 
 
@@ -116,7 +106,7 @@ VISUAL_BACKUP_TIME      = 0.35
 
 # ── Vision — Size gate before pickup ─────────────────────────────────
 VISUAL_MIN_GRASP_AREA       = 100   #Target must be at least 100 pixels in area to be considered close enough to grasp
-VISUAL_SIZE_APPROACH_STEPS  = 2     #Number of steps to take forward if the object is visible but too small.
+VISUAL_SIZE_APPROACH_STEPS  = 1     #Number of steps to take forward if the object is visible but too small.
 VISUAL_SIZE_STEP_SPEED      = 14    
 VISUAL_SIZE_STEP_TIME       = 0.15  
 VISUAL_SIZE_MAX_APPROACHES  = 2  #Maximum number of times the robot will attempt a size-approach before giving up.   
@@ -124,14 +114,14 @@ VISUAL_SIZE_MAX_APPROACHES  = 2  #Maximum number of times the robot will attempt
 # ── Vision — Phase 2: SERVO ───────────────────────────────────────────
 VISUAL_H_TOLERANCE       = 0.03  
 VISUAL_CY_TARGET_FRAC    = 0.91
-VISUAL_CY_GRASP_MIN_FRAC = 0.90
+VISUAL_CY_GRASP_MIN_FRAC = 0.89
 VISUAL_CY_GRASP_MAX_FRAC = 0.94
 
-VISUAL_CY_TOLERANCE      = 0.02  
+
 
 VISUAL_SERVO_TURN_ONLY_H = 0.30 #If horizontal error exceeds 45%, the robot will stop moving forward and only turn.  
 VISUAL_TURN_SPEED_MAX    = 5    
-VISUAL_APPROACH_SPEED    = 8    
+VISUAL_APPROACH_SPEED    = 7    
 
 VISUAL_SERVO_ITER        = 20    
 VISUAL_SERVO_DT          = LOOP_DT  

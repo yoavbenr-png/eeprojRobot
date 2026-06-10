@@ -235,8 +235,9 @@ class VisionController:
 
         # If it grabs to the right, use a POSITIVE number to shift the body left (e.g., 15)
         # If it grabs to the left, use a NEGATIVE number to shift the body right (e.g., -15)
-        parallax_offset = 15
+        parallax_offset = 10
         frame_cx  = (CAMERA_WIDTH / 2.0) + parallax_offset
+        
         # ──────────────────────────
 
         for step in range(VISUAL_SERVO_ITER):
