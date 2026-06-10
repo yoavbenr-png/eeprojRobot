@@ -285,14 +285,13 @@ class VisionController:
             if(fwd_cmd != 0):
                 self.dog.move_x(fwd_cmd)
                 print(f"[Vision] Moving forward at speed {fwd_cmd}")
-                time.sleep(0.2)
+                time.sleep(0.7)
             if(turn_cmd != 0):
                 self.dog.turn(turn_cmd)
                 print(f"[Vision] Turning at speed {turn_cmd}")
-                time.sleep(0.2)
+                time.sleep(0.7)
+            self._stop()
             time.sleep(VISUAL_SERVO_DT)
-
-        self._stop()
         return True
 
     # ------------------------------------------------------------------ public
